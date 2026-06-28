@@ -52,8 +52,11 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
     <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50">
       <div
         ref={barRef}
-        className="bg-[#15171d] border-t border-white/5 rounded-t-[28px] pt-3 px-2 flex items-stretch justify-between"
+        className="border-t border-white/5 rounded-t-[28px] pt-3 px-2 flex items-stretch justify-between"
         style={{
+          backgroundColor: "rgba(14, 16, 21, 0.85)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
           paddingBottom: "max(14px, env(safe-area-inset-bottom))",
           boxShadow: "0 -8px 30px rgba(0,0,0,0.35)",
         }}
@@ -68,21 +71,11 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
               onClick={() => handleTabClick(tab.hash)}
               className="relative flex flex-col items-center justify-start flex-1 gap-1.5 cursor-pointer"
             >
-              <div
-                className="flex items-center justify-center w-11 h-9 rounded-2xl transition-all duration-300"
-                style={
-                  active
-                    ? {
-                        backgroundColor: "#ffffff",
-                        boxShadow: "0 0 16px 2px rgba(255,255,255,0.35)",
-                      }
-                    : undefined
-                }
-              >
+              <div className="flex items-center justify-center w-11 h-9">
                 <IconComponent
                   className="w-[19px] h-[19px] transition-colors duration-300"
                   strokeWidth={active ? 2 : 1.7}
-                  style={{ color: active ? "#0e1015" : "#6b7080" }}
+                  style={{ color: active ? "#ffffff" : "#6b7080" }}
                 />
               </div>
               <span
