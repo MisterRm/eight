@@ -15,18 +15,18 @@ function RankedCard({ anime, rank }: { anime: AnimeRaw; rank: number }) {
   return (
     <div
       onClick={() => (window.location.hash = `#/detail/${anime.slug}`)}
-      className="relative flex items-center gap-3 rounded-2xl overflow-hidden cursor-pointer border border-white/5 bg-[#121319] hover:bg-[#1a1c24] transition-colors"
+      className="group relative flex items-center gap-3 rounded-2xl overflow-hidden cursor-pointer border border-white/5 bg-[#121319] hover:bg-[#1a1c24] transition-colors"
       style={{ minHeight: 80 }}
     >
-      {/* Blurred background */}
+      {/* Grayscale background like aniku */}
       <div className="absolute inset-0 overflow-hidden">
         <img
           src={anime.poster}
           alt=""
           referrerPolicy="no-referrer"
-          className="w-full h-full object-cover scale-110 blur-sm opacity-20"
+          className="w-full h-full object-cover scale-105 filter grayscale opacity-40 group-hover:opacity-50 group-hover:grayscale-0 transition-all duration-500"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#121319]/90 via-[#121319]/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/30" />
       </div>
 
       {/* Poster */}
