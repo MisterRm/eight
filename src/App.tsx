@@ -52,7 +52,7 @@ export default function App() {
   // Histats — inject sekali saat mount
   useEffect(() => {
     (window as any)._Hasync = (window as any)._Hasync || [];
-    (window as any)._Hasync.push(['Histats.start', '1,5036251,4,27,120,50,00011111']);
+    (window as any)._Hasync.push(['Histats.start', '1,5036251,4,604,110,55,00011001']);
     (window as any)._Hasync.push(['Histats.fasi', '1']);
     (window as any)._Hasync.push(['Histats.track_hits', '']);
     (window as any)._Hasync.push(['Histats.framed_page', '']);
