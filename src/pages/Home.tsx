@@ -6,6 +6,7 @@ import HeroCarousel from "../components/HeroCarousel";
 import AnimeCard from "../components/AnimeCard";
 import ShimmerCard from "../components/ShimmerCard";
 import SidebarDrawer from "../components/SidebarDrawer";
+import Footer from "../components/Footer";
 
 interface HomeProps {
   dataSource: DataSource;
@@ -413,6 +414,8 @@ export default function Home({ dataSource }: HomeProps) {
           }
         </div>
       </div>
+
+      <Footer />
 
       <SidebarDrawer
         isOpen={sidebarOpen}

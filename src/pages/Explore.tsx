@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { AnimeRaw, DataSource, ActiveTab, GridLayout } from "../types";
 import AnimeCard from "../components/AnimeCard";
 import ShimmerCard from "../components/ShimmerCard";
+import Footer from "../components/Footer";
 
 interface ExploreProps {
   dataSource: DataSource;
@@ -332,6 +333,8 @@ export default function Explore({ dataSource, gridLayout }: ExploreProps) {
       </div>
       </motion.div>
       </div>
+
+      <Footer />
     </motion.div>
   );
 }
