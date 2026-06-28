@@ -7,19 +7,34 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     <meta name="theme-color" content="#0e1015" />
+    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    #histats_counter { display:inline-flex !important; transform:scale(0.6); transform-origin:right center; }
-    #histats_counter table { margin:0 !important; background:transparent !important; border:none !important; }
-    #histats_counter td { padding:1px 3px !important; background:transparent !important; border:none !important; color:#a0a5b5 !important; font-size:10px !important; font-family:monospace !important; }
-    #histats_counter a { color:#a0a5b5 !important; text-decoration:none !important; }
-    #histats_counter img[width="1"] { display:none !important; }
-  </style>
+    <!-- Histats styles override -->
+    <style>
+      #histats_counter { display:inline-flex !important; align-items:center; justify-content:center; overflow:hidden; }
+      #histats_counter img { max-height:28px !important; border-radius:8px; }
+      /* widget Histats type 4/604 render-nya berupa tabel teks (vis.today/visitors/online),
+         bukan icon kecil — kita scale-down biar nggak makan tempat di topbar */
+      #histats_counter table { font-size:9px !important; transform:scale(0.55); transform-origin:right center; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Histats.com  START  (aync)-->
+    <script type="text/javascript">var _Hasync= _Hasync|| [];
+    _Hasync.push(['Histats.start', '1,5036251,4,604,110,55,00011001']);
+    _Hasync.push(['Histats.fasi', '1']);
+    _Hasync.push(['Histats.track_hits', '']);
+    _Hasync.push(['Histats.framed_page', '']);
+    (function() {
+    var hs = document.createElement('script'); hs.type = 'text/javascript'; hs.async = true;
+    hs.src = ('//s10.histats.com/js15_as.js');
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(hs);
+    })();</script>
+    <noscript><a href="/" target="_blank"><img src="//sstatic1.histats.com/0.gif?5036251&101" alt="" border="0"></a></noscript>
+    <!-- Histats.com  END  -->
   </body>
 </html>

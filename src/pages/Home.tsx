@@ -220,7 +220,7 @@ export default function Home({ dataSource }: HomeProps) {
             <span className="px-2 py-0.5 rounded-full bg-[#f04438]/15 text-[#f04438] text-[9px] font-bold tracking-wider uppercase">20 New</span>
           </div>
         </div>
-        <div id="histats_counter" className="flex items-center justify-center min-w-[40px]" />
+        <div id="histats_counter" className="flex items-center justify-center" />
       </div>
 
       {/* SEARCH BAR */}
