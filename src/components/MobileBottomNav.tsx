@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Home, Search, Compass, CalendarDays, User } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -17,7 +18,35 @@ const tabs = [
 const FACET_CLIP =
   "polygon(8% 0%, 92% 0%, 100% 8%, 100% 92%, 92% 100%, 8% 100%, 0% 92%, 0% 8%)";
 
+/** Distance between the bottom of the viewport and the bottom edge of the pill (matches `bottom-5`) */
+const NAV_BOTTOM_OFFSET_PX = 20;
+
 export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Measure the real rendered height of the pill (it changes slightly when a
+  // tab's label appears/disappears) and publish it as a CSS variable so any
+  // page can reserve the *exact* amount of bottom padding — no magic numbers.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const publishHeight = () => {
+      const height = el.offsetHeight;
+      const clearance = height + NAV_BOTTOM_OFFSET_PX;
+      document.documentElement.style.setProperty(
+        "--bottom-nav-clearance",
+        `${clearance}px`
+      );
+    };
+
+    publishHeight();
+
+    const observer = new ResizeObserver(publishHeight);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [currentHash]);
+
   const isTabActive = (tabHash: string) => {
     if (tabHash === "#/") {
       return currentHash === "#/" || currentHash === "" || !currentHash;
@@ -33,6 +62,7 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
     <div className="fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-[420px] z-50">
       {/* Floating glass pill */}
       <div
+        ref={wrapperRef}
         className="relative flex items-center justify-between px-3 py-2.5 rounded-[28px] floating-pill-shadow"
         style={{
           background: "rgba(14, 16, 21, 0.92)",

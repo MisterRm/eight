@@ -89,7 +89,14 @@ export default function App() {
 
   return (
     <div className="w-full min-h-screen bg-[#0e1015] relative">
-      <div className={`w-full max-w-[430px] mx-auto min-h-screen relative ${showBottomNav ? "pb-28" : ""}`}>
+      <div
+        className="w-full max-w-[430px] mx-auto min-h-screen relative"
+        style={
+          showBottomNav
+            ? { paddingBottom: "var(--bottom-nav-clearance, 96px)" }
+            : undefined
+        }
+      >
         <AnimatePresence mode="wait">
           {renderPage()}
         </AnimatePresence>
