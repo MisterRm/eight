@@ -82,17 +82,7 @@ export default function Schedule({ dataSource }: ScheduleProps) {
   // Read schedules list for selected day, handle variations like 'senen' vs 'senin'
   const getSchedulesForDay = (dayId: string): AnimeRaw[] => {
     if (!schedules) return [];
-    
-    // Spelling variation checks
-    let list = schedules[dayId];
-    if (!list && dayId === "senin") {
-      list = schedules["senen"];
-    }
-    if (!list && dayId === "minggu") {
-      list = schedules["ahad"];
-    }
-    
-    return list || [];
+    return schedules[dayId] || [];
   };
 
   // Swipe gesture

@@ -173,9 +173,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (isV2) {
         const r = await fetch(`${ANIME_BASE_URL}samehadaku/schedule`);
         const d = await r.json();
+        const dayMap: Record<string, string> = {
+          monday: "senin", tuesday: "selasa", wednesday: "rabu",
+          thursday: "kamis", friday: "jumat", saturday: "sabtu", sunday: "minggu"
+        };
         const result: Record<string, any[]> = {};
         for (const day of d.data?.days || []) {
-          result[day.day.toLowerCase()] = filterBlacklist((day.animeList || []).map(normalizeSamehadaku), blacklist);
+          const key = dayMap[day.day.toLowerCase()] || day.day.toLowerCase();
+          result[key] = filterBlacklist((day.animeList || []).map(normalizeSamehadaku), blacklist);
         }
         return res.json(result);
       } else {
@@ -183,8 +188,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const d = await r.json();
         const sched = d.schedule || {};
         const result: Record<string, any[]> = {};
-        for (const day of ["minggu","senin","selasa","rabu","kamis","jum'at","sabtu"]) {
-          result[day] = filterBlacklist((sched[day] || []).map(normalizeAnimasu), blacklist);
+        for (const day of ["minggu","senin","selasa","rabu","kamis","jumat","sabtu"]) {
+          const list = sched[day] || sched[day === "jumat" ? "jum'at" : day] || [];
+          result[day] = filterBlacklist(list.map(normalizeAnimasu), blacklist);
         }
         return res.json(result);
       }
