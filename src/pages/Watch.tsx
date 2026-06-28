@@ -111,7 +111,7 @@ export default function Watch({ slug, dataSource }: WatchProps) {
           } else if (dataSource === "Dayynime-v3") {
             // Animekompi: auto-pick bebas iklan / direct, fallback ke index 0
             if (data.mirrors && data.mirrors.length > 0) {
-              const preferred = data.mirrors.find((m: any) => m.isFree || m.isDirect) || data.mirrors[0];
+              const preferred = data.mirrors.find((m: any) => m.isFree) || data.mirrors[0];
               setActiveUrl(preferred.url);
             } else if (data.defaultStreamingUrl) {
               setActiveUrl(data.defaultStreamingUrl);
@@ -433,7 +433,7 @@ export default function Watch({ slug, dataSource }: WatchProps) {
           <div className="grid grid-cols-2 gap-2">
             {episode.mirrors.map((mirror: any, idx: number) => {
               const isActive = activeUrl === mirror.url;
-              const isFree = mirror.isFree || mirror.isDirect;
+              const isFree = mirror.isFree;
               return (
                 <button
                   key={idx}

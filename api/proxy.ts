@@ -475,26 +475,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const r = await fetch(`${ANIME_BASE_URL_V3}episode/${slug}`);
         const s = ((await r.json()).data) || {};
 
-        // Resolve mirrors: Filedon → direct stream, sort "Bebas Iklan" duluan
+        // Sort mirrors: "Bebas Iklan" naik ke atas, sisanya urutan asli
         const rawMirrors: { name: string; url: string }[] = s.mirrors || [];
-        const resolvedMirrors = await Promise.all(
-          rawMirrors.map(async (m: any) => {
-            if (/filedon/i.test(m.url || "")) {
-              try {
-                const resolved = await extractFiledonStream(m.url);
-                if (resolved) return { name: m.name, url: resolved.url, isDirect: true, isFree: true };
-              } catch {}
-            }
-            const isFree = /bebas iklan/i.test(m.name || "");
-            return { name: m.name, url: m.url, isDirect: false, isFree };
-          })
-        );
-        // Sort: bebas iklan / direct dulu
-        resolvedMirrors.sort((a, b) => {
-          const aFree = a.isFree || a.isDirect ? 1 : 0;
-          const bFree = b.isFree || b.isDirect ? 1 : 0;
-          return bFree - aFree;
-        });
+        const resolvedMirrors = rawMirrors.map((m: any) => ({
+          name: m.name,
+          url: m.url,
+          isFree: /bebas iklan/i.test(m.name || ""),
+        }));
+        resolvedMirrors.sort((a, b) => (b.isFree ? 1 : 0) - (a.isFree ? 1 : 0));
 
         const preferredUrl = resolvedMirrors[0]?.url || "";
 
