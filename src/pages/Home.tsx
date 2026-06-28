@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Radio, CheckCircle, Play, Star } from "lucide-react";
+import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Radio, Play, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { AnimeRaw, FeaturedAnime, DataSource } from "../types";
 import HeroCarousel from "../components/HeroCarousel";
@@ -7,14 +7,14 @@ import AnimeCard from "../components/AnimeCard";
 import ShimmerCard from "../components/ShimmerCard";
 import SidebarDrawer from "../components/SidebarDrawer";
 import Footer from "../components/Footer";
-import { getHomeCache, setHomeCache } from "../App";
+
 
 interface HomeProps {
   dataSource: DataSource;
 }
 
 // Ranked list card — persis kek aniku
-function RankedCard({ anime, rank }: { anime: AnimeRaw; rank: number }) {
+function RankedCard({ anime, rank, forceType }: { anime: AnimeRaw; rank: number; forceType?: string }) {
   return (
     <div
       onClick={() => (window.location.hash = `#/detail/${anime.slug}`)}
@@ -52,16 +52,20 @@ function RankedCard({ anime, rank }: { anime: AnimeRaw; rank: number }) {
       <div className="relative flex-1 min-w-0 py-3 pr-3">
         {/* Status dot + label */}
         <div className="flex items-center gap-1.5 mb-1">
-          <span
-            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-            style={{ background: anime.status?.toLowerCase().includes("comp") ? "#2196F3" : "#4CAF50" }}
-          />
-          <span
-            className="text-[9px] font-bold uppercase tracking-widest"
-            style={{ color: anime.status?.toLowerCase().includes("comp") ? "#2196F3" : "#4CAF50" }}
-          >
-            {anime.status || "Ongoing"}
-          </span>
+          {(() => {
+            const s = (anime.status || "").toLowerCase();
+            const isCompleted = s.includes("comp") || s.includes("tamat") || s.includes("finish");
+            const effectiveType = forceType || anime.type || "";
+            const isMovie = effectiveType.toLowerCase().includes("movie");
+            const color = isMovie ? "#a855f7" : isCompleted ? "#2196F3" : "#4CAF50";
+            const label = isMovie ? "Movie" : isCompleted ? "Completed" : "Ongoing";
+            return (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color }}>{label}</span>
+              </>
+            );
+          })()}
         </div>
 
         <h4 className="text-sm font-bold text-white leading-tight line-clamp-2 mb-1.5">
@@ -105,33 +109,25 @@ function RankedShimmer() {
 export default function Home({ dataSource }: HomeProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Cek cache dulu — kalau ada, langsung pakai (tidak perlu loading)
-  const cached = getHomeCache(dataSource);
-  const [featured, setFeatured] = useState<FeaturedAnime[]>(cached?.featured ?? []);
-  const [recent, setRecent] = useState<AnimeRaw[]>(cached?.recent ?? []);
-  const [ongoing, setOngoing] = useState<AnimeRaw[]>(cached?.ongoing ?? []);
-  const [completed, setCompleted] = useState<AnimeRaw[]>(cached?.completed ?? []);
-  const [loading, setLoading] = useState(!cached);
-  const [loadingCompleted, setLoadingCompleted] = useState(!cached);
+  const [featured, setFeatured] = useState<FeaturedAnime[]>([]);
+  const [recent, setRecent] = useState<AnimeRaw[]>([]);
+  const [ongoing, setOngoing] = useState<AnimeRaw[]>([]);
+  const [completed, setCompleted] = useState<AnimeRaw[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingCompleted, setLoadingCompleted] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Kalau cache masih valid, skip fetch
-    if (getHomeCache(dataSource)) return;
-
     let active = true;
     const fetchHomeData = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch featured & home secara paralel
-        const [featuredRes, homeRes] = await Promise.all([
-          fetch(`/api/proxy?route=featured_anime&source=${dataSource}`),
+        // Fetch home & popular secara paralel untuk slider
+        const [homeRes, popularRes] = await Promise.all([
           fetch(`/api/proxy?route=home&source=${dataSource}`),
+          fetch(`/api/proxy?route=explore&tab=Popular&page=1&source=${dataSource}`),
         ]);
-
-        let featuredData: FeaturedAnime[] = [];
-        if (featuredRes.ok) featuredData = await featuredRes.json();
 
         if (!homeRes.ok) throw new Error("Gagal mengambil data beranda");
         const homeData = await homeRes.json();
@@ -139,6 +135,24 @@ export default function Home({ dataSource }: HomeProps) {
         const ongoingList: AnimeRaw[] = homeData.ongoing || [];
         const recentList: AnimeRaw[] = homeData.recent || homeData.recents || [];
 
+        // Featured slider dari Popular (ambil 7 teratas, poster lebih berkualitas)
+        let featuredData: FeaturedAnime[] = [];
+        if (popularRes.ok) {
+          const popularData = await popularRes.json();
+          const popularList: AnimeRaw[] = popularData.animes || [];
+          featuredData = popularList.slice(0, 7).map((a, i) => ({
+            id: i + 1,
+            anime_slug: a.slug,
+            anime_title: a.title,
+            anime_poster: a.poster,
+            order_index: i + 1,
+            anime_genres: a.genres || [],
+            anime_score: a.score,
+            anime_type: a.type,
+          }));
+        }
+
+        // Fallback ke ongoing kalau popular gagal
         if (featuredData.length === 0 && ongoingList.length > 0) {
           featuredData = ongoingList.slice(0, 5).map((a, i) => ({
             id: i + 1,
@@ -146,6 +160,9 @@ export default function Home({ dataSource }: HomeProps) {
             anime_title: a.title,
             anime_poster: a.poster,
             order_index: i + 1,
+            anime_genres: a.genres || [],
+            anime_score: a.score,
+            anime_type: a.type,
           }));
         }
 
@@ -164,15 +181,13 @@ export default function Home({ dataSource }: HomeProps) {
     return () => { active = false; };
   }, [dataSource]);
 
-  // Fetch completed separately — juga cek cache
+  // Fetch movies separately
   useEffect(() => {
-    if (getHomeCache(dataSource)) return;
-
     let active = true;
-    const fetchCompleted = async () => {
+    const fetchMovies = async () => {
       setLoadingCompleted(true);
       try {
-        const res = await fetch(`/api/proxy?route=explore&tab=Completed&page=1&source=${dataSource}`);
+        const res = await fetch(`/api/proxy?route=explore&tab=Movies&page=1&source=${dataSource}`);
         if (!res.ok) return;
         const data = await res.json();
         if (active) setCompleted((data.animes || []).slice(0, 8));
@@ -180,16 +195,11 @@ export default function Home({ dataSource }: HomeProps) {
         if (active) setLoadingCompleted(false);
       }
     };
-    fetchCompleted();
+    fetchMovies();
     return () => { active = false; };
   }, [dataSource]);
 
-  // Simpan ke cache setelah semua data tersedia
-  useEffect(() => {
-    if (!loading && !loadingCompleted && ongoing.length > 0) {
-      setHomeCache({ featured, recent, ongoing, completed, dataSource });
-    }
-  }, [loading, loadingCompleted, ongoing.length]);
+
 
   const handleChipClick = (tabName: string, genreSlug?: string) => {
     if (genreSlug) window.location.hash = `#/explore?tab=Genres&genre=${genreSlug}`;
@@ -412,16 +422,16 @@ export default function Home({ dataSource }: HomeProps) {
         )}
       </div>
 
-      {/* BARU TAMAT — ranked */}
+      {/* ANIME MOVIE — ranked */}
       <div className="mb-7 px-5">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#2196F3]/15 flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 text-[#2196F3]" />
+            <div className="w-7 h-7 rounded-lg bg-[#a855f7]/15 flex items-center justify-center">
+              <Play className="w-4 h-4 text-[#a855f7]" />
             </div>
-            <h2 className="text-base font-bold text-white uppercase tracking-wide">Baru Tamat</h2>
+            <h2 className="text-base font-bold text-white uppercase tracking-wide">Anime Movie</h2>
           </div>
-          <button onClick={() => handleSeeAll("Completed")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
+          <button onClick={() => handleSeeAll("Movies")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
             See all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
