@@ -53,6 +53,7 @@ async function fetchWithCache<T = any>(cacheKey: string, fetcher: () => Promise<
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ANIME_BASE_URL = "https://www.sankavollerei.com/anime/";
+const ANIME_BASE_URL_V3 = "https://www.sankavollerei.web.id/anime/animekompi/";
 const ANIME_API_KEY = "planaai";
 const SUPABASE_URL = "https://uczxaiyibnwgycodtcvm.supabase.co";
 const SUPABASE_ANON_KEY =
@@ -108,6 +109,8 @@ async function extractFiledonStream(embedUrl: string): Promise<{ url: string; is
   } catch { return null; }
 }
 
+// ─── Normalizers ─────────────────────────────────────────────────────────────
+
 function normalizeAnimasu(item: any) {
   if (!item) return null;
   return {
@@ -140,6 +143,35 @@ function normalizeSamehadaku(item: any) {
   };
 }
 
+// Animekompi: /home dan /search dll mengembalikan episode slug (bukan anime slug)
+// Perlu di-extract anime slug dari episode slug
+function animeSlugFromEpSlug(epSlug: string): string {
+  // Contoh: "one-piece-episode-1168-subtitle-indonesia" → "one-piece"
+  // Atau slug batch: "one-piece" → "one-piece" (tidak ada episode-N)
+  const match = epSlug.match(/^(.+?)-episode-\d/);
+  return match ? match[1] : epSlug.replace(/-subtitle-indonesia$/, "");
+}
+
+function normalizeAnimekompi(item: any) {
+  if (!item) return null;
+  // item.slug di /home dan /search adalah EPISODE slug, bukan anime slug
+  // Kita derive anime slug dari sana
+  const rawSlug = (item.slug || "").trim();
+  const animeSlug = item.detail_slug || animeSlugFromEpSlug(rawSlug);
+  return {
+    title: item.title || "Unknown",
+    slug: animeSlug,
+    poster: item.poster || item.image || "",
+    episode: item.episode || null,
+    type: item.type || null,
+    score: item.rating || null,
+    status: item.status || null,
+    release: item.date || null,
+    genres: [],
+    estimation: item.time || null,
+  };
+}
+
 function filterBlacklist(list: any[], blacklist: Set<string>) {
   return list.filter((item) => item && !blacklist.has((item.slug || "").toLowerCase()));
 }
@@ -150,6 +182,8 @@ async function upstream(url: string): Promise<any> {
   return res.json();
 }
 
+// ─── Main Handler ─────────────────────────────────────────────────────────────
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
@@ -157,7 +191,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { route, source = "Dayynime-v1", ...params } = req.query as Record<string, string>;
   const isV2 = source === "Dayynime-v2";
-  const src = isV2 ? "v2" : "v1";
+  const isV3 = source === "Dayynime-v3";
+  const src = isV3 ? "v3" : isV2 ? "v2" : "v1";
 
   try {
     if (route === "featured_anime") {
@@ -173,9 +208,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json(data);
     }
 
+    // ── HOME ──────────────────────────────────────────────────────────────────
     if (route === "home") {
       const blacklist = await getBlacklistedSlugs();
-      if (isV2) {
+      if (isV3) {
+        const data = await fetchWithCache(`home:${src}`, async () => {
+          const [dR, dT] = await Promise.all([
+            upstream(`${ANIME_BASE_URL_V3}home`),
+            upstream(`${ANIME_BASE_URL_V3}terbaru?page=1`),
+          ]);
+          return {
+            recent: (dR.data || []).map(normalizeAnimekompi).filter(Boolean),
+            ongoing: (dT.data || []).map(normalizeAnimekompi).filter(Boolean),
+          };
+        }, TTL.home);
+        return res.json({ recent: filterBlacklist(data.recent, blacklist), ongoing: filterBlacklist(data.ongoing, blacklist) });
+      } else if (isV2) {
         const data = await fetchWithCache(`home:${src}`, async () => {
           const [dR, dO] = await Promise.all([
             upstream(`${ANIME_BASE_URL}samehadaku/recent?page=1`),
@@ -199,12 +247,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── SEARCH ────────────────────────────────────────────────────────────────
     if (route === "search") {
       const keyword = encodeURIComponent(params.keyword || "");
       const page = params.page || "1";
       if (!keyword) return res.json({ animes: [] });
       const blacklist = await getBlacklistedSlugs();
-      if (isV2) {
+      if (isV3) {
+        const r = await fetch(`${ANIME_BASE_URL_V3}search?q=${keyword}&page=${page}`);
+        const d = await r.json();
+        const animes = (d.data || []).map(normalizeAnimekompi).filter(Boolean);
+        const pg = d.pagination || {};
+        return res.json({ animes: filterBlacklist(animes, blacklist), pagination: { hasNext: !!pg.has_next, hasPrev: !!pg.prev_page, currentPage: Number(pg.current_page || page) } });
+      } else if (isV2) {
         const r = await fetch(`${ANIME_BASE_URL}samehadaku/search?q=${keyword}&page=${page}`);
         const d = await r.json();
         return res.json({ animes: filterBlacklist((d.data?.animeList || []).map(normalizeSamehadaku), blacklist), pagination: { hasNext: !!d.pagination?.hasNextPage, hasPrev: !!d.pagination?.hasPrevPage, currentPage: Number(d.pagination?.currentPage || page) } });
@@ -215,13 +270,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── EXPLORE ───────────────────────────────────────────────────────────────
     if (route === "explore") {
       const tab = params.tab || "Ongoing";
       const genreSlug = params.genreSlug || "";
       const page = params.page || "1";
       const cacheKey = `explore:${src}:${tab}:${genreSlug}:${page}`;
       const blacklist = await getBlacklistedSlugs();
-      if (isV2) {
+      if (isV3) {
+        // Animekompi tab mapping
+        const epMap: Record<string, string> = {
+          Popular: `order/popular`,
+          Movies: `movie`,
+          Completed: `status/completed`,
+          Latest: `terbaru`,
+          Genres: `genre/${genreSlug}`,
+          All: `terbaru`,
+          Ongoing: `status/ongoing`,
+        };
+        const ep = epMap[tab] || "terbaru";
+        const data = await fetchWithCache(cacheKey, async () => {
+          const d = await upstream(`${ANIME_BASE_URL_V3}${ep}?page=${page}`);
+          const pg = d.pagination || {};
+          return {
+            animes: (d.data || []).map(normalizeAnimekompi).filter(Boolean),
+            pagination: { hasNext: !!pg.has_next, hasPrev: !!pg.prev_page, currentPage: Number(pg.current_page || page) },
+          };
+        }, TTL.explore);
+        return res.json({ animes: filterBlacklist(data.animes, blacklist), pagination: data.pagination });
+      } else if (isV2) {
         const epMap: Record<string, string> = { Popular:"popular", Movies:"movies", Completed:"completed", Latest:"recent", Genres:`genres/${genreSlug}` };
         const ep = epMap[tab] || "ongoing";
         const data = await fetchWithCache(cacheKey, async () => {
@@ -240,8 +317,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── GENRES ────────────────────────────────────────────────────────────────
     if (route === "genres") {
-      if (isV2) {
+      if (isV3) {
+        const data = await fetchWithCache(`genres:${src}`, async () => {
+          const d = await upstream(`${ANIME_BASE_URL_V3}genres`);
+          return (d.data || []).map((g: any) => ({ title: g.name, slug: g.value })).sort((a: any, b: any) => a.title.localeCompare(b.title));
+        }, TTL.genres);
+        return res.json(data);
+      } else if (isV2) {
         const data = await fetchWithCache(`genres:${src}`, async () => {
           const d = await upstream(`${ANIME_BASE_URL}samehadaku/genres`);
           return (d.data?.genreList || []).map((g: any) => ({ title: g.title, slug: g.genreId })).sort((a: any, b: any) => a.title.localeCompare(b.title));
@@ -256,9 +340,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── SCHEDULE ──────────────────────────────────────────────────────────────
     if (route === "schedule") {
       const blacklist = await getBlacklistedSlugs();
-      if (isV2) {
+      if (isV3) {
+        const data = await fetchWithCache(`schedule:${src}`, async () => {
+          const d = await upstream(`${ANIME_BASE_URL_V3}schedule`);
+          // Animekompi: data = array of { day: "Minggu", list: [...] }
+          // day sudah Bahasa Indonesia tapi ada "Jum'at" → normalize ke "jumat"
+          const dayNorm: Record<string, string> = {
+            minggu: "minggu", senin: "senin", selasa: "selasa",
+            rabu: "rabu", kamis: "kamis", "jum'at": "jumat", jumat: "jumat", sabtu: "sabtu",
+          };
+          const result: Record<string, any[]> = {};
+          for (const entry of d.data || []) {
+            const key = dayNorm[(entry.day || "").toLowerCase()] || (entry.day || "").toLowerCase();
+            result[key] = (entry.list || []).map((item: any) => ({
+              title: item.title || "Unknown",
+              slug: item.slug || "",
+              poster: item.poster || "",
+              episode: item.episode || null,
+              type: null,
+              score: null,
+              status: null,
+              release: null,
+              genres: [],
+              estimation: item.time || null,
+            })).filter(Boolean);
+          }
+          return result;
+        }, TTL.schedule);
+        const filtered: Record<string, any[]> = {};
+        for (const [day, list] of Object.entries(data)) filtered[day] = filterBlacklist(list, blacklist);
+        return res.json(filtered);
+      } else if (isV2) {
         const data = await fetchWithCache(`schedule:${src}`, async () => {
           const d = await upstream(`${ANIME_BASE_URL}samehadaku/schedule`);
           const dayMap: Record<string, string> = { monday:"senin", tuesday:"selasa", wednesday:"rabu", thursday:"kamis", friday:"jumat", saturday:"sabtu", sunday:"minggu" };
@@ -289,12 +404,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── DETAIL ────────────────────────────────────────────────────────────────
     if (route === "detail") {
       const slug = params.slug || "";
       if (!slug) return res.status(400).json({ error: "slug diperlukan" });
       const blacklist = await getBlacklistedSlugs();
       if (blacklist.has(slug.toLowerCase())) return res.status(403).json({ error: "Anime ini diblokir.", blacklisted: true });
-      if (isV2) {
+      if (isV3) {
+        const data = await fetchWithCache(`detail:${src}:${slug}`, async () => {
+          const d = ((await upstream(`${ANIME_BASE_URL_V3}detail/${slug}`)).data) || {};
+          const meta = d.metadata || {};
+          return {
+            title: d.title || d.alter_title || "Unknown",
+            poster: d.image || "",
+            score: d.rating || "N/A",
+            synopsis: d.synopsis || "",
+            trailer: null,
+            type: meta.tipe || "N/A",
+            status: meta.status || "N/A",
+            aired: meta.dirilis_2 || meta.dirilis || "N/A",
+            duration: meta.durasi || "N/A",
+            studios: meta.studio || "N/A",
+            season: meta.season || "N/A",
+            genres: (d.genres || []).map((g: any) => ({ name: String(g.name ?? ""), slug: g.slug || "" })),
+            episodes: (d.episodes || []).map((ep: any) => ({
+              name: String(ep.title ?? ep.num ?? ""),
+              slug: ep.slug || "",
+            })),
+            recommended: [],
+          };
+        }, TTL.detail);
+        return res.json(data);
+      } else if (isV2) {
         const data = await fetchWithCache(`detail:${src}:${slug}`, async () => {
           const d = ((await upstream(`${ANIME_BASE_URL}samehadaku/anime/${slug}`)).data) || {};
           return {
@@ -326,10 +467,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── EPISODE ───────────────────────────────────────────────────────────────
     if (route === "episode") {
       const slug = params.slug || "";
       if (!slug) return res.status(400).json({ error: "slug diperlukan" });
-      if (isV2) {
+      if (isV3) {
+        const r = await fetch(`${ANIME_BASE_URL_V3}episode/${slug}`);
+        const s = ((await r.json()).data) || {};
+        return res.json({
+          title: s.title || "Nonton Anime",
+          animeId: s.detail_slug || animeSlugFromEpSlug(slug),
+          poster: "",
+          defaultStreamingUrl: s.default_iframe && s.default_iframe !== "about:blank" ? s.default_iframe : (s.mirrors?.[0]?.url || ""),
+          hasPrev: !!s.prev_episode,
+          prevSlug: s.prev_episode || null,
+          prevTitle: "",
+          hasNext: !!s.next_episode,
+          nextSlug: s.next_episode || null,
+          nextTitle: "",
+          // V3-specific: mirrors & downloads
+          mirrors: (s.mirrors || []).map((m: any) => ({ name: m.name, url: m.url })),
+          downloads: s.downloads || [],
+        });
+      } else if (isV2) {
         const r = await fetch(`${ANIME_BASE_URL}samehadaku/episode/${slug}`);
         const s = ((await r.json()).data) || {};
         return res.json({
@@ -365,6 +525,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── SERVER (V2 only) ──────────────────────────────────────────────────────
     if (route === "server") {
       const serverId = params.serverId || "";
       if (!serverId) return res.status(400).json({ error: "serverId diperlukan" });

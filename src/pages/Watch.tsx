@@ -108,6 +108,13 @@ export default function Watch({ slug, dataSource }: WatchProps) {
             } else if (data.defaultStreamingUrl) {
               setActiveUrl(data.defaultStreamingUrl);
             }
+          } else if (dataSource === "Dayynime-v3") {
+            // Animekompi: gunakan mirror pertama atau default_iframe
+            if (data.mirrors && data.mirrors.length > 0) {
+              setActiveUrl(data.mirrors[0].url);
+            } else if (data.defaultStreamingUrl) {
+              setActiveUrl(data.defaultStreamingUrl);
+            }
           } else {
             // Dayynime-v2 Quality & Server loading
             if (data.qualities && data.qualities.length > 0) {
@@ -410,6 +417,65 @@ export default function Watch({ slug, dataSource }: WatchProps) {
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* V3 MIRRORS SELECTOR */}
+      {dataSource === "Dayynime-v3" && episode.mirrors && episode.mirrors.length > 0 && (
+        <div className="mb-6 p-4 bg-[#121319] border border-white/5 rounded-2xl select-none">
+          <label className="text-xs font-semibold text-[#535766] uppercase tracking-wider block mb-2.5 flex items-center gap-1.5">
+            <Monitor className="w-3.5 h-3.5" />
+            Pilih Server Mirror
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {episode.mirrors.map((mirror, idx) => {
+              const isActive = activeUrl === mirror.url;
+              return (
+                <button
+                  key={idx}
+                  onClick={() => setActiveUrl(mirror.url)}
+                  className={`text-xs p-3 rounded-xl border text-center font-medium truncate cursor-pointer transition-all ${
+                    isActive
+                      ? "bg-white/10 text-white border-white/20 font-semibold"
+                      : "bg-[#1a1c24] border-white/5 text-[#a0a5b5] hover:text-white"
+                  }`}
+                >
+                  {mirror.name || `Server ${idx + 1}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* V3 DOWNLOAD LINKS */}
+      {dataSource === "Dayynime-v3" && episode.downloads && episode.downloads.length > 0 && (
+        <div className="mb-6 p-4 bg-[#121319] border border-white/5 rounded-2xl select-none">
+          <label className="text-xs font-semibold text-[#535766] uppercase tracking-wider block mb-2.5 flex items-center gap-1.5">
+            <HardDrive className="w-3.5 h-3.5" />
+            Link Download
+          </label>
+          <div className="flex flex-col gap-3">
+            {episode.downloads.map((dl, i) => (
+              <div key={i}>
+                <p className="text-xs text-[#535766] font-semibold uppercase mb-1.5">{dl.resolution} · {dl.format.toUpperCase()}</p>
+                <div className="flex flex-wrap gap-2">
+                  {dl.links.map((link, j) => (
+                    <a
+                      key={j}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs px-3 py-1.5 rounded-xl bg-[#1a1c24] border border-white/5 text-[#a0a5b5] hover:text-white transition-colors"
+                    >
+                      {link.server}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -48,6 +48,10 @@ export interface DetailPayload {
   recommended: AnimeRaw[];
 }
 
+export interface MirrorItem { name: string; url: string; }
+export interface DownloadLink { server: string; url: string; }
+export interface DownloadItem { format: string; resolution: string; links: DownloadLink[]; }
+
 export interface EpisodePayload {
   title: string;
   animeId?: string;
@@ -61,10 +65,13 @@ export interface EpisodePayload {
   nextTitle?: string;
   qualities?: { title: string; serverList: { title: string; serverId: string }[] }[];
   streams?: { name: string; url: string }[];
+  // Animekompi (v3)
+  mirrors?: MirrorItem[];
+  downloads?: DownloadItem[];
 }
 
 export type AccentColor = 'white' | 'blue' | 'purple' | 'green' | 'orange';
-export type DataSource = 'Dayynime-v1' | 'Dayynime-v2';
+export type DataSource = 'Dayynime-v1' | 'Dayynime-v2' | 'Dayynime-v3';
 export type GridLayout = 'cols-2' | 'cols-3' | 'list';
 export type TextSize = 'kecil' | 'sedang' | 'besar';
 export type ActiveTab = 'Popular' | 'Movies' | 'Ongoing' | 'Completed' | 'Latest' | 'Genres' | 'All';
