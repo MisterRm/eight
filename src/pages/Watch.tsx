@@ -11,6 +11,19 @@ interface WatchProps {
   dataSource: DataSource;
 }
 
+// Beberapa host (seperti VIP Streaming) sering nge-block embed dari domain luar.
+// Prioritaskan host yang biasanya tidak punya restriction seperti ini.
+const PREFERRED_SERVER_KEYWORDS = ["blogspot", "blogger", "mega", "nakama"];
+
+function pickPreferredServer(serverList: { title: string; serverId: string }[]) {
+  if (!serverList || serverList.length === 0) return null;
+  for (const keyword of PREFERRED_SERVER_KEYWORDS) {
+    const found = serverList.find((s) => s.title?.toLowerCase().includes(keyword));
+    if (found) return found;
+  }
+  return serverList[0];
+}
+
 export default function Watch({ slug, dataSource }: WatchProps) {
   const [episode, setEpisode] = useState<EpisodePayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,10 +83,14 @@ export default function Watch({ slug, dataSource }: WatchProps) {
             if (data.qualities && data.qualities.length > 0) {
               const firstQuality = data.qualities[0];
               if (firstQuality.serverList && firstQuality.serverList.length > 0) {
-                const firstServer = firstQuality.serverList[0];
-                setSelectedServerId(firstServer.serverId);
-                // Fetch streaming url for this server
-                await fetchServerUrl(firstServer.serverId);
+                const firstServer = pickPreferredServer(firstQuality.serverList);
+                if (firstServer) {
+                  setSelectedServerId(firstServer.serverId);
+                  // Fetch streaming url for this server
+                  await fetchServerUrl(firstServer.serverId);
+                }
+              } else if (data.defaultStreamingUrl) {
+                setActiveUrl(data.defaultStreamingUrl);
               }
             } else if (data.defaultStreamingUrl) {
               setActiveUrl(data.defaultStreamingUrl);
@@ -296,10 +313,10 @@ export default function Watch({ slug, dataSource }: WatchProps) {
                     key={qual.title}
                     onClick={() => {
                       setSelectedQualityIdx(idx);
-                      // Auto pick first server of this quality
+                      // Auto pick server yang biasanya tidak ke-restrict embed-nya
                       if (qual.serverList && qual.serverList.length > 0) {
-                        const firstServer = qual.serverList[0];
-                        handleV2ServerChange(firstServer.serverId);
+                        const firstServer = pickPreferredServer(qual.serverList);
+                        if (firstServer) handleV2ServerChange(firstServer.serverId);
                       }
                     }}
                     className={`text-xs px-3.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
