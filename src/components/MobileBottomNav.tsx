@@ -1,4 +1,4 @@
-import { Home, Sparkles, LayoutGrid, Clapperboard, User } from "lucide-react";
+import { Home, Search, LayoutGrid, Clapperboard, User } from "lucide-react";
 
 interface MobileBottomNavProps {
   currentHash: string;
@@ -8,7 +8,7 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
   // Map our app hash routes to the 5 bottom nav tabs
   const tabs = [
     { id: "home", label: "Home", hash: "#/", icon: Home },
-    { id: "search", label: "Ask Ai", hash: "#/search", icon: Sparkles },
+    { id: "search", label: "Search", hash: "#/search", icon: Search },
     { id: "explore", label: "Category", hash: "#/explore", icon: LayoutGrid },
     { id: "schedule", label: "Clips", hash: "#/schedule", icon: Clapperboard },
     { id: "settings", label: "Profile", hash: "#/settings", icon: User },

@@ -291,8 +291,8 @@ export default function Home({ dataSource }: HomeProps) {
             </div>
             <h2 className="text-base font-bold text-white uppercase tracking-wide">Top Ongoing</h2>
           </div>
-          <button onClick={() => handleSeeAll("Ongoing")} className="flex items-center text-xs text-[#f04438] hover:text-[#f04438]/80 cursor-pointer font-semibold">
-            Lihat Semua <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+          <button onClick={() => handleSeeAll("Ongoing")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
+            See All <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
         <div className="flex flex-col gap-2.5">
@@ -335,8 +335,8 @@ export default function Home({ dataSource }: HomeProps) {
             </div>
             <h2 className="text-base font-bold text-white uppercase tracking-wide">Baru Tamat</h2>
           </div>
-          <button onClick={() => handleSeeAll("Completed")} className="flex items-center text-xs text-[#f04438] hover:text-[#f04438]/80 cursor-pointer font-semibold">
-            Lihat Semua <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+          <button onClick={() => handleSeeAll("Completed")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
+            See All <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
         <div className="flex flex-col gap-2.5">
