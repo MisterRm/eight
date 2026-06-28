@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import Home from "./pages/Home";
 import Search from "./pages/Search";
@@ -9,32 +9,6 @@ import Schedule from "./pages/Schedule";
 import SettingsPage from "./pages/Settings";
 import MobileBottomNav from "./components/MobileBottomNav";
 import { getSettings, AppSettings } from "./lib/settings";
-import { AnimeRaw, FeaturedAnime } from "./types";
-
-// ─── Global Home Cache ────────────────────────────────────────────────────────
-// Disimpan di luar component supaya tidak hilang saat Home di-unmount.
-// TTL 5 menit: cukup segar untuk data anime, cukup panjang untuk UX instan.
-interface HomeCache {
-  featured: FeaturedAnime[];
-  recent: AnimeRaw[];
-  ongoing: AnimeRaw[];
-  completed: AnimeRaw[];
-  dataSource: string;
-  fetchedAt: number;
-}
-let _homeCache: HomeCache | null = null;
-const HOME_CACHE_TTL = 5 * 60 * 1000; // 5 menit
-
-export function getHomeCache(dataSource: string): HomeCache | null {
-  if (!_homeCache) return null;
-  if (_homeCache.dataSource !== dataSource) return null;
-  if (Date.now() - _homeCache.fetchedAt > HOME_CACHE_TTL) return null;
-  return _homeCache;
-}
-export function setHomeCache(data: Omit<HomeCache, "fetchedAt"> & { dataSource: string }) {
-  _homeCache = { ...data, fetchedAt: Date.now() };
-}
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [currentHash, setCurrentHash] = useState(window.location.hash || "#/");

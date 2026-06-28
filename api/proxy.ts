@@ -110,12 +110,14 @@ async function extractFiledonStream(embedUrl: string): Promise<{ url: string; is
 
 function normalizeAnimasu(item: any, forceType?: string) {
   if (!item) return null;
-  // Animasu di tab Movies ngirim rating di field "type" (contoh: "★ 8")
-  // Deteksi: kalau type mengandung "★" atau angka, itu rating bukan type
   const rawType = item.type || "";
-  const isRatingInType = rawType.includes("★") || /^\d/.test(rawType);
-  const actualType = forceType || (isRatingInType ? "Movie" : rawType) || null;
-  const actualScore = isRatingInType ? rawType.replace("★", "").trim() : (item.score || item.rating || null);
+  // Animasu di tab Movies ngirim rating di field "type" (contoh: "★ 8")
+  // Hanya ekstrak kalau forceType disediakan (artinya caller tahu ini tab Movies)
+  const isRatingInType = forceType && (rawType.includes("★") || /^\d/.test(rawType));
+  const actualType = forceType || rawType || null;
+  const actualScore = isRatingInType
+    ? rawType.replace("★", "").trim()
+    : (item.score || item.rating || null);
 
   return {
     title: item.title || "Unknown",
