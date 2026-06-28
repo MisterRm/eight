@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Radio, Play, Star } from "lucide-react";
+import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Radio, CheckCircle, Play, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { AnimeRaw, FeaturedAnime, DataSource } from "../types";
 import HeroCarousel from "../components/HeroCarousel";
@@ -52,19 +52,16 @@ function RankedCard({ anime, rank }: { anime: AnimeRaw; rank: number }) {
       <div className="relative flex-1 min-w-0 py-3 pr-3">
         {/* Status dot + label */}
         <div className="flex items-center gap-1.5 mb-1">
-          {(() => {
-            const s = (anime.status || "").toLowerCase();
-            const isCompleted = s.includes("comp") || s.includes("tamat") || s.includes("finish");
-            const isMovie = (anime.type || "").toLowerCase().includes("movie");
-            const color = isMovie ? "#a855f7" : isCompleted ? "#2196F3" : "#4CAF50";
-            const label = isMovie ? "Movie" : isCompleted ? "Completed" : "Ongoing";
-            return (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
-                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color }}>{label}</span>
-              </>
-            );
-          })()}
+          <span
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            style={{ background: anime.status?.toLowerCase().includes("comp") ? "#2196F3" : "#4CAF50" }}
+          />
+          <span
+            className="text-[9px] font-bold uppercase tracking-widest"
+            style={{ color: anime.status?.toLowerCase().includes("comp") ? "#2196F3" : "#4CAF50" }}
+          >
+            {anime.status || "Ongoing"}
+          </span>
         </div>
 
         <h4 className="text-sm font-bold text-white leading-tight line-clamp-2 mb-1.5">
@@ -127,11 +124,14 @@ export default function Home({ dataSource }: HomeProps) {
       setLoading(true);
       setError(null);
       try {
-        // Fetch home & popular secara paralel untuk slider
-        const [homeRes, popularRes] = await Promise.all([
+        // Fetch featured & home secara paralel
+        const [featuredRes, homeRes] = await Promise.all([
+          fetch(`/api/proxy?route=featured_anime&source=${dataSource}`),
           fetch(`/api/proxy?route=home&source=${dataSource}`),
-          fetch(`/api/proxy?route=explore&tab=Popular&page=1&source=${dataSource}`),
         ]);
+
+        let featuredData: FeaturedAnime[] = [];
+        if (featuredRes.ok) featuredData = await featuredRes.json();
 
         if (!homeRes.ok) throw new Error("Gagal mengambil data beranda");
         const homeData = await homeRes.json();
@@ -139,24 +139,6 @@ export default function Home({ dataSource }: HomeProps) {
         const ongoingList: AnimeRaw[] = homeData.ongoing || [];
         const recentList: AnimeRaw[] = homeData.recent || homeData.recents || [];
 
-        // Featured slider dari Popular (ambil 7 teratas, poster lebih berkualitas)
-        let featuredData: FeaturedAnime[] = [];
-        if (popularRes.ok) {
-          const popularData = await popularRes.json();
-          const popularList: AnimeRaw[] = popularData.animes || [];
-          featuredData = popularList.slice(0, 7).map((a, i) => ({
-            id: i + 1,
-            anime_slug: a.slug,
-            anime_title: a.title,
-            anime_poster: a.poster,
-            order_index: i + 1,
-            anime_genres: a.genres || [],
-            anime_score: a.score,
-            anime_type: a.type,
-          }));
-        }
-
-        // Fallback ke ongoing kalau popular gagal
         if (featuredData.length === 0 && ongoingList.length > 0) {
           featuredData = ongoingList.slice(0, 5).map((a, i) => ({
             id: i + 1,
@@ -164,9 +146,6 @@ export default function Home({ dataSource }: HomeProps) {
             anime_title: a.title,
             anime_poster: a.poster,
             order_index: i + 1,
-            anime_genres: a.genres || [],
-            anime_score: a.score,
-            anime_type: a.type,
           }));
         }
 
@@ -185,15 +164,15 @@ export default function Home({ dataSource }: HomeProps) {
     return () => { active = false; };
   }, [dataSource]);
 
-  // Fetch movies separately — juga cek cache
+  // Fetch completed separately — juga cek cache
   useEffect(() => {
     if (getHomeCache(dataSource)) return;
 
     let active = true;
-    const fetchMovies = async () => {
+    const fetchCompleted = async () => {
       setLoadingCompleted(true);
       try {
-        const res = await fetch(`/api/proxy?route=explore&tab=Movies&page=1&source=${dataSource}`);
+        const res = await fetch(`/api/proxy?route=explore&tab=Completed&page=1&source=${dataSource}`);
         if (!res.ok) return;
         const data = await res.json();
         if (active) setCompleted((data.animes || []).slice(0, 8));
@@ -201,7 +180,7 @@ export default function Home({ dataSource }: HomeProps) {
         if (active) setLoadingCompleted(false);
       }
     };
-    fetchMovies();
+    fetchCompleted();
     return () => { active = false; };
   }, [dataSource]);
 
@@ -433,16 +412,16 @@ export default function Home({ dataSource }: HomeProps) {
         )}
       </div>
 
-      {/* ANIME MOVIE — ranked */}
+      {/* BARU TAMAT — ranked */}
       <div className="mb-7 px-5">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#a855f7]/15 flex items-center justify-center">
-              <Play className="w-4 h-4 text-[#a855f7]" />
+            <div className="w-7 h-7 rounded-lg bg-[#2196F3]/15 flex items-center justify-center">
+              <CheckCircle className="w-4 h-4 text-[#2196F3]" />
             </div>
-            <h2 className="text-base font-bold text-white uppercase tracking-wide">Anime Movie</h2>
+            <h2 className="text-base font-bold text-white uppercase tracking-wide">Baru Tamat</h2>
           </div>
-          <button onClick={() => handleSeeAll("Movies")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
+          <button onClick={() => handleSeeAll("Completed")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
             See all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
