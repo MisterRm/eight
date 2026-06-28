@@ -1,5 +1,56 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { fetchWithCache, cacheGet, cacheSet } from "../lib/redis";
+
+// ─── Upstash Redis (inline — Vercel tidak support import dari luar /api/) ────
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const isRedisConfigured = !!REDIS_URL && !!REDIS_TOKEN;
+
+const memoryCache = new Map<string, { value: string; expires: number }>();
+
+function memGet(key: string): string | null {
+  const e = memoryCache.get(key);
+  if (!e) return null;
+  if (Date.now() > e.expires) { memoryCache.delete(key); return null; }
+  return e.value;
+}
+function memSet(key: string, value: string, ttlSeconds: number) {
+  memoryCache.set(key, { value, expires: Date.now() + ttlSeconds * 1000 });
+}
+async function redisRequest(command: string[]): Promise<any> {
+  const res = await fetch(`${REDIS_URL}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify(command),
+  });
+  if (!res.ok) throw new Error(`Redis error: ${res.status}`);
+  return (await res.json()).result;
+}
+async function cacheGet<T = any>(key: string): Promise<T | null> {
+  try {
+    if (!isRedisConfigured) {
+      const v = memGet(key);
+      return v ? (JSON.parse(v) as T) : null;
+    }
+    const result = await redisRequest(["GET", key]);
+    if (!result) return null;
+    return JSON.parse(result) as T;
+  } catch { return null; }
+}
+async function cacheSet(key: string, data: any, ttlSeconds: number): Promise<void> {
+  try {
+    const value = JSON.stringify(data);
+    if (!isRedisConfigured) { memSet(key, value, ttlSeconds); return; }
+    await redisRequest(["SET", key, value, "EX", String(ttlSeconds)]);
+  } catch {}
+}
+async function fetchWithCache<T = any>(cacheKey: string, fetcher: () => Promise<T>, ttlSeconds: number): Promise<T> {
+  const cached = await cacheGet<T>(cacheKey);
+  if (cached !== null) return cached;
+  const data = await fetcher();
+  await cacheSet(cacheKey, data, ttlSeconds);
+  return data;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const ANIME_BASE_URL = "https://www.sankavollerei.com/anime/";
 const ANIME_API_KEY = "planaai";
@@ -7,17 +58,15 @@ const SUPABASE_URL = "https://uczxaiyibnwgycodtcvm.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjenhhaXlpYm53Z3ljb2R0Y3ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MzYxNzAsImV4cCI6MjA5NjQxMjE3MH0.UUPfyZ4GJO6y8I5467p_piCxtyuyM5oYGX_-jPeiZRw";
 
-// ─── TTL per route (detik) ────────────────────────────────────────────────────
 const TTL = {
-  featured:  5 * 60,   // 5 menit  — jarang berubah
-  home:      5 * 60,   // 5 menit
-  schedule:  10 * 60,  // 10 menit — jadwal mingguan, sangat stabil
-  genres:    30 * 60,  // 30 menit — hampir tidak pernah berubah
-  explore:   3 * 60,   // 3 menit  — bisa berubah lebih sering
-  detail:    10 * 60,  // 10 menit — info anime stabil
-  blacklist: 5 * 60,   // 5 menit
+  featured:  5 * 60,
+  home:      5 * 60,
+  schedule:  10 * 60,
+  genres:    30 * 60,
+  explore:   3 * 60,
+  detail:    10 * 60,
+  blacklist: 5 * 60,
 };
-// ─────────────────────────────────────────────────────────────────────────────
 
 function supabaseHeaders() {
   return {
@@ -31,10 +80,7 @@ async function getBlacklistedSlugs(): Promise<Set<string>> {
   return fetchWithCache(
     "blacklist:slugs",
     async () => {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/blacklisted_anime?select=anime_slug`,
-        { headers: supabaseHeaders() }
-      );
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/blacklisted_anime?select=anime_slug`, { headers: supabaseHeaders() });
       const data = (await res.json()) as { anime_slug: string }[];
       return data.map((i) => i.anime_slug?.toLowerCase().trim());
     },
@@ -42,39 +88,24 @@ async function getBlacklistedSlugs(): Promise<Set<string>> {
   ).then((arr) => new Set(arr));
 }
 
-const DESKTOP_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 async function extractFiledonStream(embedUrl: string): Promise<{ url: string; isHls: boolean } | null> {
   try {
-    const res = await fetch(embedUrl, {
-      headers: { "User-Agent": DESKTOP_UA, Referer: embedUrl },
-    });
+    const res = await fetch(embedUrl, { headers: { "User-Agent": DESKTOP_UA, Referer: embedUrl } });
     if (!res.ok) return null;
     const html = await res.text();
-
     const match = html.match(/data-page="([^"]*)"/);
     if (!match) return null;
-
-    const decoded = match[1]
-      .replace(/&quot;/g, '"')
-      .replace(/&#039;/g, "'")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">");
-
+    const decoded = match[1].replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
     const data = JSON.parse(decoded);
     const props = data?.props || {};
     const hlsUrl: string | undefined = props?.media?.hls_url;
     const directUrl: string | undefined = props?.url;
-
     const url = (hlsUrl && hlsUrl !== "null" ? hlsUrl : null) || (directUrl && directUrl !== "null" ? directUrl : null);
     if (!url) return null;
-
     return { url, isHls: url.includes(".m3u8") };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function normalizeAnimasu(item: any) {
@@ -113,7 +144,6 @@ function filterBlacklist(list: any[], blacklist: Set<string>) {
   return list.filter((item) => item && !blacklist.has((item.slug || "").toLowerCase()));
 }
 
-/** Fetch JSON mentah dari upstream — tidak di-cache di sini, biar fetchWithCache yang handle */
 async function upstream(url: string): Promise<any> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Upstream error ${res.status}: ${url}`);
@@ -130,72 +160,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const src = isV2 ? "v2" : "v1";
 
   try {
-    // ── featured_anime ──────────────────────────────────────────────────────
     if (route === "featured_anime") {
       const [featured, blacklist] = await Promise.all([
-        fetchWithCache(
-          `featured:${src}`,
-          () => fetch(`${SUPABASE_URL}/rest/v1/featured_anime?select=*&order=order_index.asc`, { headers: supabaseHeaders() }).then(r => r.json()),
-          TTL.featured
-        ),
+        fetchWithCache(`featured:${src}`, () => fetch(`${SUPABASE_URL}/rest/v1/featured_anime?select=*&order=order_index.asc`, { headers: supabaseHeaders() }).then(r => r.json()), TTL.featured),
         getBlacklistedSlugs(),
       ]);
       return res.json(featured.filter((i: any) => !blacklist.has((i.anime_slug || "").toLowerCase())));
     }
 
-    // ── announcements ───────────────────────────────────────────────────────
     if (route === "announcements") {
-      const data = await fetchWithCache(
-        "announcements",
-        () => fetch(`${SUPABASE_URL}/rest/v1/announcements?is_active=eq.true`, { headers: supabaseHeaders() }).then(r => r.json()),
-        TTL.featured
-      );
+      const data = await fetchWithCache("announcements", () => fetch(`${SUPABASE_URL}/rest/v1/announcements?is_active=eq.true`, { headers: supabaseHeaders() }).then(r => r.json()), TTL.featured);
       return res.json(data);
     }
 
-    // ── home ────────────────────────────────────────────────────────────────
     if (route === "home") {
       const blacklist = await getBlacklistedSlugs();
       if (isV2) {
-        const data = await fetchWithCache(
-          `home:${src}`,
-          async () => {
-            const [dR, dO] = await Promise.all([
-              upstream(`${ANIME_BASE_URL}samehadaku/recent?page=1`),
-              upstream(`${ANIME_BASE_URL}samehadaku/ongoing?page=1`),
-            ]);
-            return {
-              recent: (dR.data?.animeList || []).map(normalizeSamehadaku).filter(Boolean),
-              ongoing: (dO.data?.animeList || []).map(normalizeSamehadaku).filter(Boolean),
-            };
-          },
-          TTL.home
-        );
-        return res.json({
-          recent: filterBlacklist(data.recent, blacklist),
-          ongoing: filterBlacklist(data.ongoing, blacklist),
-        });
+        const data = await fetchWithCache(`home:${src}`, async () => {
+          const [dR, dO] = await Promise.all([
+            upstream(`${ANIME_BASE_URL}samehadaku/recent?page=1`),
+            upstream(`${ANIME_BASE_URL}samehadaku/ongoing?page=1`),
+          ]);
+          return {
+            recent: (dR.data?.animeList || []).map(normalizeSamehadaku).filter(Boolean),
+            ongoing: (dO.data?.animeList || []).map(normalizeSamehadaku).filter(Boolean),
+          };
+        }, TTL.home);
+        return res.json({ recent: filterBlacklist(data.recent, blacklist), ongoing: filterBlacklist(data.ongoing, blacklist) });
       } else {
-        const data = await fetchWithCache(
-          `home:${src}`,
-          async () => {
-            const d = await upstream(`${ANIME_BASE_URL}animasu/home?apikey=${ANIME_API_KEY}`);
-            return {
-              ongoing: (d.ongoing || []).map(normalizeAnimasu).filter(Boolean),
-              recent: (d.recent || []).map(normalizeAnimasu).filter(Boolean),
-            };
-          },
-          TTL.home
-        );
-        return res.json({
-          ongoing: filterBlacklist(data.ongoing, blacklist),
-          recent: filterBlacklist(data.recent, blacklist),
-        });
+        const data = await fetchWithCache(`home:${src}`, async () => {
+          const d = await upstream(`${ANIME_BASE_URL}animasu/home?apikey=${ANIME_API_KEY}`);
+          return {
+            ongoing: (d.ongoing || []).map(normalizeAnimasu).filter(Boolean),
+            recent: (d.recent || []).map(normalizeAnimasu).filter(Boolean),
+          };
+        }, TTL.home);
+        return res.json({ ongoing: filterBlacklist(data.ongoing, blacklist), recent: filterBlacklist(data.recent, blacklist) });
       }
     }
 
-    // ── search ──────────────────────────────────────────────────────────────
-    // Search tidak di-cache karena query selalu beda-beda
     if (route === "search") {
       const keyword = encodeURIComponent(params.keyword || "");
       const page = params.page || "1";
@@ -204,187 +207,125 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (isV2) {
         const r = await fetch(`${ANIME_BASE_URL}samehadaku/search?q=${keyword}&page=${page}`);
         const d = await r.json();
-        return res.json({
-          animes: filterBlacklist((d.data?.animeList || []).map(normalizeSamehadaku), blacklist),
-          pagination: { hasNext: !!d.pagination?.hasNextPage, hasPrev: !!d.pagination?.hasPrevPage, currentPage: Number(d.pagination?.currentPage || page) },
-        });
+        return res.json({ animes: filterBlacklist((d.data?.animeList || []).map(normalizeSamehadaku), blacklist), pagination: { hasNext: !!d.pagination?.hasNextPage, hasPrev: !!d.pagination?.hasPrevPage, currentPage: Number(d.pagination?.currentPage || page) } });
       } else {
         const r = await fetch(`${ANIME_BASE_URL}animasu/search/${keyword}?apikey=${ANIME_API_KEY}`);
         const d = await r.json();
-        return res.json({
-          animes: filterBlacklist((d.animes || []).map(normalizeAnimasu), blacklist),
-          pagination: { hasNext: false, hasPrev: false, currentPage: 1 },
-        });
+        return res.json({ animes: filterBlacklist((d.animes || []).map(normalizeAnimasu), blacklist), pagination: { hasNext: false, hasPrev: false, currentPage: 1 } });
       }
     }
 
-    // ── explore ─────────────────────────────────────────────────────────────
     if (route === "explore") {
       const tab = params.tab || "Ongoing";
       const genreSlug = params.genreSlug || "";
       const page = params.page || "1";
       const cacheKey = `explore:${src}:${tab}:${genreSlug}:${page}`;
       const blacklist = await getBlacklistedSlugs();
-
       if (isV2) {
         const epMap: Record<string, string> = { Popular:"popular", Movies:"movies", Completed:"completed", Latest:"recent", Genres:`genres/${genreSlug}` };
         const ep = epMap[tab] || "ongoing";
-        const data = await fetchWithCache(
-          cacheKey,
-          async () => {
-            const d = await upstream(`${ANIME_BASE_URL}samehadaku/${ep}?page=${page}`);
-            return {
-              animes: (d.data?.animeList || []).map(normalizeSamehadaku).filter(Boolean),
-              pagination: { hasNext: !!d.pagination?.hasNextPage, hasPrev: !!d.pagination?.hasPrevPage, currentPage: Number(d.pagination?.currentPage || page) },
-            };
-          },
-          TTL.explore
-        );
+        const data = await fetchWithCache(cacheKey, async () => {
+          const d = await upstream(`${ANIME_BASE_URL}samehadaku/${ep}?page=${page}`);
+          return { animes: (d.data?.animeList || []).map(normalizeSamehadaku).filter(Boolean), pagination: { hasNext: !!d.pagination?.hasNextPage, hasPrev: !!d.pagination?.hasPrevPage, currentPage: Number(d.pagination?.currentPage || page) } };
+        }, TTL.explore);
         return res.json({ animes: filterBlacklist(data.animes, blacklist), pagination: data.pagination });
       } else {
         const epMap: Record<string, string> = { Popular:"popular", Movies:"movies", Completed:"completed", Latest:"latest", All:"animelist", Genres:`genre/${genreSlug}` };
         const ep = epMap[tab] || "ongoing";
-        const data = await fetchWithCache(
-          cacheKey,
-          async () => {
-            const d = await upstream(`${ANIME_BASE_URL}animasu/${ep}?apikey=${ANIME_API_KEY}&page=${page}`);
-            return {
-              animes: (d.animes || []).map(normalizeAnimasu).filter(Boolean),
-              pagination: { hasNext: !!d.pagination?.hasNext, hasPrev: !!d.pagination?.hasPrev, currentPage: Number(d.pagination?.currentPage || page) },
-            };
-          },
-          TTL.explore
-        );
+        const data = await fetchWithCache(cacheKey, async () => {
+          const d = await upstream(`${ANIME_BASE_URL}animasu/${ep}?apikey=${ANIME_API_KEY}&page=${page}`);
+          return { animes: (d.animes || []).map(normalizeAnimasu).filter(Boolean), pagination: { hasNext: !!d.pagination?.hasNext, hasPrev: !!d.pagination?.hasPrev, currentPage: Number(d.pagination?.currentPage || page) } };
+        }, TTL.explore);
         return res.json({ animes: filterBlacklist(data.animes, blacklist), pagination: data.pagination });
       }
     }
 
-    // ── genres ──────────────────────────────────────────────────────────────
     if (route === "genres") {
       if (isV2) {
-        const data = await fetchWithCache(
-          `genres:${src}`,
-          async () => {
-            const d = await upstream(`${ANIME_BASE_URL}samehadaku/genres`);
-            return (d.data?.genreList || []).map((g: any) => ({ title: g.title, slug: g.genreId }))
-              .sort((a: any, b: any) => a.title.localeCompare(b.title));
-          },
-          TTL.genres
-        );
+        const data = await fetchWithCache(`genres:${src}`, async () => {
+          const d = await upstream(`${ANIME_BASE_URL}samehadaku/genres`);
+          return (d.data?.genreList || []).map((g: any) => ({ title: g.title, slug: g.genreId })).sort((a: any, b: any) => a.title.localeCompare(b.title));
+        }, TTL.genres);
         return res.json(data);
       } else {
-        const data = await fetchWithCache(
-          `genres:${src}`,
-          async () => {
-            const d = await upstream(`${ANIME_BASE_URL}animasu/genres?apikey=${ANIME_API_KEY}`);
-            return (d.genres || []).map((g: any) => ({ title: g.name, slug: g.slug }))
-              .sort((a: any, b: any) => a.title.localeCompare(b.title));
-          },
-          TTL.genres
-        );
+        const data = await fetchWithCache(`genres:${src}`, async () => {
+          const d = await upstream(`${ANIME_BASE_URL}animasu/genres?apikey=${ANIME_API_KEY}`);
+          return (d.genres || []).map((g: any) => ({ title: g.name, slug: g.slug })).sort((a: any, b: any) => a.title.localeCompare(b.title));
+        }, TTL.genres);
         return res.json(data);
       }
     }
 
-    // ── schedule ────────────────────────────────────────────────────────────
     if (route === "schedule") {
       const blacklist = await getBlacklistedSlugs();
       if (isV2) {
-        const data = await fetchWithCache(
-          `schedule:${src}`,
-          async () => {
-            const d = await upstream(`${ANIME_BASE_URL}samehadaku/schedule`);
-            const dayMap: Record<string, string> = {
-              monday: "senin", tuesday: "selasa", wednesday: "rabu",
-              thursday: "kamis", friday: "jumat", saturday: "sabtu", sunday: "minggu",
-            };
-            const result: Record<string, any[]> = {};
-            for (const day of d.data?.days || []) {
-              const key = dayMap[day.day.toLowerCase()] || day.day.toLowerCase();
-              result[key] = (day.animeList || []).map(normalizeSamehadaku).filter(Boolean);
-            }
-            return result;
-          },
-          TTL.schedule
-        );
+        const data = await fetchWithCache(`schedule:${src}`, async () => {
+          const d = await upstream(`${ANIME_BASE_URL}samehadaku/schedule`);
+          const dayMap: Record<string, string> = { monday:"senin", tuesday:"selasa", wednesday:"rabu", thursday:"kamis", friday:"jumat", saturday:"sabtu", sunday:"minggu" };
+          const result: Record<string, any[]> = {};
+          for (const day of d.data?.days || []) {
+            const key = dayMap[day.day.toLowerCase()] || day.day.toLowerCase();
+            result[key] = (day.animeList || []).map(normalizeSamehadaku).filter(Boolean);
+          }
+          return result;
+        }, TTL.schedule);
         const filtered: Record<string, any[]> = {};
         for (const [day, list] of Object.entries(data)) filtered[day] = filterBlacklist(list, blacklist);
         return res.json(filtered);
       } else {
-        const data = await fetchWithCache(
-          `schedule:${src}`,
-          async () => {
-            const d = await upstream(`${ANIME_BASE_URL}animasu/schedule?apikey=${ANIME_API_KEY}`);
-            const sched = d.schedule || {};
-            const result: Record<string, any[]> = {};
-            for (const day of ["minggu","senin","selasa","rabu","kamis","jumat","sabtu"]) {
-              const list = sched[day] || sched[day === "jumat" ? "jum'at" : day] || [];
-              result[day] = list.map(normalizeAnimasu).filter(Boolean);
-            }
-            return result;
-          },
-          TTL.schedule
-        );
+        const data = await fetchWithCache(`schedule:${src}`, async () => {
+          const d = await upstream(`${ANIME_BASE_URL}animasu/schedule?apikey=${ANIME_API_KEY}`);
+          const sched = d.schedule || {};
+          const result: Record<string, any[]> = {};
+          for (const day of ["minggu","senin","selasa","rabu","kamis","jumat","sabtu"]) {
+            const list = sched[day] || sched[day === "jumat" ? "jum'at" : day] || [];
+            result[day] = list.map(normalizeAnimasu).filter(Boolean);
+          }
+          return result;
+        }, TTL.schedule);
         const filtered: Record<string, any[]> = {};
         for (const [day, list] of Object.entries(data)) filtered[day] = filterBlacklist(list, blacklist);
         return res.json(filtered);
       }
     }
 
-    // ── detail ──────────────────────────────────────────────────────────────
     if (route === "detail") {
       const slug = params.slug || "";
       if (!slug) return res.status(400).json({ error: "slug diperlukan" });
       const blacklist = await getBlacklistedSlugs();
       if (blacklist.has(slug.toLowerCase())) return res.status(403).json({ error: "Anime ini diblokir.", blacklisted: true });
-
       if (isV2) {
-        const data = await fetchWithCache(
-          `detail:${src}:${slug}`,
-          async () => {
-            const d = ((await upstream(`${ANIME_BASE_URL}samehadaku/anime/${slug}`)).data) || {};
-            return {
-              title: d.title||d.english||d.japanese||"Unknown", poster: d.poster||"",
-              score: d.score?.value||d.score||"N/A",
-              synopsis: d.synopsis?.paragraphs?.join("\n")||d.synopsis||"",
-              trailer: d.trailer||null, type: d.type||"N/A", status: d.status||"N/A",
-              aired: d.aired||"N/A", duration: d.duration||"N/A", studios: d.studios||"N/A", season: d.season||"N/A",
-              genres: (d.genreList||[]).map((g:any)=>({name:String(g.title??g.name??""), slug:g.genreId||g.slug||""})),
-              episodes: (d.episodeList||[]).map((ep:any)=>({
-                name: String(ep.title ?? ep.name ?? ep.episode ?? ""),
-                slug: ep.episodeId || ep.slug || ep.id || "",
-              })),
-              recommended: (d.recommendedAnimeList||[]).slice(0,6).map(normalizeSamehadaku).filter(Boolean),
-            };
-          },
-          TTL.detail
-        );
+        const data = await fetchWithCache(`detail:${src}:${slug}`, async () => {
+          const d = ((await upstream(`${ANIME_BASE_URL}samehadaku/anime/${slug}`)).data) || {};
+          return {
+            title: d.title||d.english||d.japanese||"Unknown", poster: d.poster||"",
+            score: d.score?.value||d.score||"N/A",
+            synopsis: d.synopsis?.paragraphs?.join("\n")||d.synopsis||"",
+            trailer: d.trailer||null, type: d.type||"N/A", status: d.status||"N/A",
+            aired: d.aired||"N/A", duration: d.duration||"N/A", studios: d.studios||"N/A", season: d.season||"N/A",
+            genres: (d.genreList||[]).map((g:any)=>({name:String(g.title??g.name??""), slug:g.genreId||g.slug||""})),
+            episodes: (d.episodeList||[]).map((ep:any)=>({ name: String(ep.title??ep.name??ep.episode??""), slug: ep.episodeId||ep.slug||ep.id||"" })),
+            recommended: (d.recommendedAnimeList||[]).slice(0,6).map(normalizeSamehadaku).filter(Boolean),
+          };
+        }, TTL.detail);
         return res.json(data);
       } else {
-        const data = await fetchWithCache(
-          `detail:${src}:${slug}`,
-          async () => {
-            const a = ((await upstream(`${ANIME_BASE_URL}animasu/detail/${slug}?apikey=${ANIME_API_KEY}`)).detail) || {};
-            return {
-              title: a.title||"Unknown", poster: a.poster||"", score: a.rating||"N/A",
-              synopsis: a.synopsis||"", trailer: a.trailer||null, type: a.type||"N/A",
-              status: a.status||"N/A", aired: a.aired||"N/A", duration: a.duration||"N/A",
-              studios: a.studio||"N/A", season: a.season||"N/A",
-              genres: (a.genres||[]).map((g:any)=>({name:String(g.name??g.title??""), slug:g.slug||g.genreId||""})),
-              episodes: (a.episodes||[]).map((ep:any)=>({
-                name: String(ep.name ?? ep.title ?? ep.episode ?? ""),
-                slug: ep.slug || ep.episodeId || ep.id || "",
-              })),
-              recommended: [],
-            };
-          },
-          TTL.detail
-        );
+        const data = await fetchWithCache(`detail:${src}:${slug}`, async () => {
+          const a = ((await upstream(`${ANIME_BASE_URL}animasu/detail/${slug}?apikey=${ANIME_API_KEY}`)).detail) || {};
+          return {
+            title: a.title||"Unknown", poster: a.poster||"", score: a.rating||"N/A",
+            synopsis: a.synopsis||"", trailer: a.trailer||null, type: a.type||"N/A",
+            status: a.status||"N/A", aired: a.aired||"N/A", duration: a.duration||"N/A",
+            studios: a.studio||"N/A", season: a.season||"N/A",
+            genres: (a.genres||[]).map((g:any)=>({name:String(g.name??g.title??""), slug:g.slug||g.genreId||""})),
+            episodes: (a.episodes||[]).map((ep:any)=>({ name: String(ep.name??ep.title??ep.episode??""), slug: ep.slug||ep.episodeId||ep.id||"" })),
+            recommended: [],
+          };
+        }, TTL.detail);
         return res.json(data);
       }
     }
 
-    // ── episode & server — TIDAK di-cache (video URL presigned/expire) ──────
     if (route === "episode") {
       const slug = params.slug || "";
       if (!slug) return res.status(400).json({ error: "slug diperlukan" });
@@ -401,38 +342,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else {
         const r = await fetch(`${ANIME_BASE_URL}animasu/episode/${slug}?apikey=${ANIME_API_KEY}`);
         const d = await r.json();
-
-        let hasPrev = false, hasNext = false;
-        let prevSlug: string | null = null, nextSlug: string | null = null;
-        let prevTitle = "", nextTitle = "";
+        let hasPrev = false, hasNext = false, prevSlug: string | null = null, nextSlug: string | null = null, prevTitle = "", nextTitle = "";
         try {
           const epMatch = slug.match(/^(.+)-episode-(\d+(?:-\d+)?)$/);
           if (epMatch) {
             const animeSlug = epMatch[1];
-            // Detail bisa dari cache kalau sudah pernah di-fetch
-            const cached = await fetchWithCache(
-              `detail:${src}:${animeSlug}`,
-              async () => {
-                const dr = await fetch(`${ANIME_BASE_URL}animasu/detail/${animeSlug}?apikey=${ANIME_API_KEY}`);
-                if (!dr.ok) return { episodes: [] };
-                const dd = await dr.json();
-                return { episodes: (dd.detail?.episodes || []) };
-              },
-              TTL.detail
-            );
+            const cached = await fetchWithCache(`detail:${src}:${animeSlug}`, async () => {
+              const dr = await fetch(`${ANIME_BASE_URL}animasu/detail/${animeSlug}?apikey=${ANIME_API_KEY}`);
+              if (!dr.ok) return { episodes: [] };
+              const dd = await dr.json();
+              return { episodes: (dd.detail?.episodes || []) };
+            }, TTL.detail);
             const episodes: {name:string,slug:string}[] = cached.episodes || [];
             const currentIdx = episodes.findIndex(ep => ep.slug === slug);
             if (currentIdx !== -1) {
-              if (currentIdx > 0) { hasNext = true; nextSlug = episodes[currentIdx - 1].slug; nextTitle = episodes[currentIdx - 1].name; }
-              if (currentIdx < episodes.length - 1) { hasPrev = true; prevSlug = episodes[currentIdx + 1].slug; prevTitle = episodes[currentIdx + 1].name; }
+              if (currentIdx > 0) { hasNext = true; nextSlug = episodes[currentIdx-1].slug; nextTitle = episodes[currentIdx-1].name; }
+              if (currentIdx < episodes.length-1) { hasPrev = true; prevSlug = episodes[currentIdx+1].slug; prevTitle = episodes[currentIdx+1].name; }
             }
           }
         } catch {}
-
-        return res.json({
-          title: d.title||"Nonton Anime", streams: d.streams||[],
-          hasPrev, prevSlug, prevTitle, hasNext, nextSlug, nextTitle,
-        });
+        return res.json({ title: d.title||"Nonton Anime", streams: d.streams||[], hasPrev, prevSlug, prevTitle, hasNext, nextSlug, nextTitle });
       }
     }
 
@@ -442,12 +371,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const r = await fetch(`${ANIME_BASE_URL}samehadaku/server/${serverId}`);
       const d = await r.json();
       const result = d.data || { url: "" };
-
       if (result.url && /filedon/i.test(result.url)) {
         const resolved = await extractFiledonStream(result.url);
         if (resolved) return res.json({ url: resolved.url, isDirect: true, isHls: resolved.isHls });
       }
-
       return res.json(result);
     }
 
