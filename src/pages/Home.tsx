@@ -189,7 +189,7 @@ export default function Home({ dataSource }: HomeProps) {
       id="home-page"
     >
       {/* TOP BAR */}
-      <div className="flex justify-between items-center pt-10 pb-4 px-5">
+      <div className="flex justify-between items-center pt-5 pb-4 px-5">
         <div className="flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)} className="text-[#a0a5b5] hover:text-white cursor-pointer">
             <Menu className="w-6 h-6 stroke-[2]" />
