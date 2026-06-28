@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { fetchWithCache, cacheGet, cacheSet } from "./redis";
+import { fetchWithCache, cacheGet, cacheSet } from "../lib/redis";
 
 const ANIME_BASE_URL = "https://www.sankavollerei.com/anime/";
 const ANIME_API_KEY = "planaai";
