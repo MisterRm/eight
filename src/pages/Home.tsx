@@ -7,6 +7,7 @@ import AnimeCard from "../components/AnimeCard";
 import ShimmerCard from "../components/ShimmerCard";
 import SidebarDrawer from "../components/SidebarDrawer";
 import Footer from "../components/Footer";
+import { getHomeCache, setHomeCache } from "../App";
 
 interface HomeProps {
   dataSource: DataSource;
@@ -103,25 +104,35 @@ function RankedShimmer() {
 
 export default function Home({ dataSource }: HomeProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [featured, setFeatured] = useState<FeaturedAnime[]>([]);
-  const [recent, setRecent] = useState<AnimeRaw[]>([]);
-  const [ongoing, setOngoing] = useState<AnimeRaw[]>([]);
-  const [completed, setCompleted] = useState<AnimeRaw[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingCompleted, setLoadingCompleted] = useState(true);
+
+  // Cek cache dulu — kalau ada, langsung pakai (tidak perlu loading)
+  const cached = getHomeCache(dataSource);
+  const [featured, setFeatured] = useState<FeaturedAnime[]>(cached?.featured ?? []);
+  const [recent, setRecent] = useState<AnimeRaw[]>(cached?.recent ?? []);
+  const [ongoing, setOngoing] = useState<AnimeRaw[]>(cached?.ongoing ?? []);
+  const [completed, setCompleted] = useState<AnimeRaw[]>(cached?.completed ?? []);
+  const [loading, setLoading] = useState(!cached);
+  const [loadingCompleted, setLoadingCompleted] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Kalau cache masih valid, skip fetch
+    if (getHomeCache(dataSource)) return;
+
     let active = true;
     const fetchHomeData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const featuredRes = await fetch(`/api/proxy?route=featured_anime&source=${dataSource}`);
+        // Fetch featured & home secara paralel
+        const [featuredRes, homeRes] = await Promise.all([
+          fetch(`/api/proxy?route=featured_anime&source=${dataSource}`),
+          fetch(`/api/proxy?route=home&source=${dataSource}`),
+        ]);
+
         let featuredData: FeaturedAnime[] = [];
         if (featuredRes.ok) featuredData = await featuredRes.json();
 
-        const homeRes = await fetch(`/api/proxy?route=home&source=${dataSource}`);
         if (!homeRes.ok) throw new Error("Gagal mengambil data beranda");
         const homeData = await homeRes.json();
 
@@ -153,8 +164,10 @@ export default function Home({ dataSource }: HomeProps) {
     return () => { active = false; };
   }, [dataSource]);
 
-  // Fetch completed separately
+  // Fetch completed separately — juga cek cache
   useEffect(() => {
+    if (getHomeCache(dataSource)) return;
+
     let active = true;
     const fetchCompleted = async () => {
       setLoadingCompleted(true);
@@ -170,6 +183,13 @@ export default function Home({ dataSource }: HomeProps) {
     fetchCompleted();
     return () => { active = false; };
   }, [dataSource]);
+
+  // Simpan ke cache setelah semua data tersedia
+  useEffect(() => {
+    if (!loading && !loadingCompleted && ongoing.length > 0) {
+      setHomeCache({ featured, recent, ongoing, completed, dataSource });
+    }
+  }, [loading, loadingCompleted, ongoing.length]);
 
   const handleChipClick = (tabName: string, genreSlug?: string) => {
     if (genreSlug) window.location.hash = `#/explore?tab=Genres&genre=${genreSlug}`;
