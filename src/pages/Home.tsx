@@ -124,14 +124,11 @@ export default function Home({ dataSource }: HomeProps) {
       setLoading(true);
       setError(null);
       try {
-        // Fetch featured & home secara paralel
-        const [featuredRes, homeRes] = await Promise.all([
-          fetch(`/api/proxy?route=featured_anime&source=${dataSource}`),
+        // Fetch home & popular secara paralel
+        const [homeRes, popularRes] = await Promise.all([
           fetch(`/api/proxy?route=home&source=${dataSource}`),
+          fetch(`/api/proxy?route=explore&tab=Popular&page=1&source=${dataSource}`),
         ]);
-
-        let featuredData: FeaturedAnime[] = [];
-        if (featuredRes.ok) featuredData = await featuredRes.json();
 
         if (!homeRes.ok) throw new Error("Gagal mengambil data beranda");
         const homeData = await homeRes.json();
@@ -139,6 +136,18 @@ export default function Home({ dataSource }: HomeProps) {
         const ongoingList: AnimeRaw[] = homeData.ongoing || [];
         const recentList: AnimeRaw[] = homeData.recent || homeData.recents || [];
 
+        // Featured slider dari Popular (minimal 5 item)
+        let featuredData: FeaturedAnime[] = [];
+        if (popularRes.ok) {
+          const popularData = await popularRes.json();
+          featuredData = (popularData.animes || []).slice(0, 7).map((a: AnimeRaw, i: number) => ({
+            id: i + 1,
+            anime_slug: a.slug,
+            anime_title: a.title,
+            anime_poster: a.poster,
+            order_index: i + 1,
+          }));
+        }
         if (featuredData.length === 0 && ongoingList.length > 0) {
           featuredData = ongoingList.slice(0, 5).map((a, i) => ({
             id: i + 1,
