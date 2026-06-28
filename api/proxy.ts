@@ -474,19 +474,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (isV3) {
         const r = await fetch(`${ANIME_BASE_URL_V3}episode/${slug}`);
         const s = ((await r.json()).data) || {};
+
+        // Resolve mirrors: Filedon → direct stream, sort "Bebas Iklan" duluan
+        const rawMirrors: { name: string; url: string }[] = s.mirrors || [];
+        const resolvedMirrors = await Promise.all(
+          rawMirrors.map(async (m: any) => {
+            if (/filedon/i.test(m.url || "")) {
+              try {
+                const resolved = await extractFiledonStream(m.url);
+                if (resolved) return { name: m.name, url: resolved.url, isDirect: true, isFree: true };
+              } catch {}
+            }
+            const isFree = /bebas iklan/i.test(m.name || "");
+            return { name: m.name, url: m.url, isDirect: false, isFree };
+          })
+        );
+        // Sort: bebas iklan / direct dulu
+        resolvedMirrors.sort((a, b) => {
+          const aFree = a.isFree || a.isDirect ? 1 : 0;
+          const bFree = b.isFree || b.isDirect ? 1 : 0;
+          return bFree - aFree;
+        });
+
+        const preferredUrl = resolvedMirrors[0]?.url || "";
+
         return res.json({
           title: s.title || "Nonton Anime",
           animeId: s.detail_slug || animeSlugFromEpSlug(slug),
           poster: "",
-          defaultStreamingUrl: s.default_iframe && s.default_iframe !== "about:blank" ? s.default_iframe : (s.mirrors?.[0]?.url || ""),
+          defaultStreamingUrl: preferredUrl,
           hasPrev: !!s.prev_episode,
           prevSlug: s.prev_episode || null,
           prevTitle: "",
           hasNext: !!s.next_episode,
           nextSlug: s.next_episode || null,
           nextTitle: "",
-          // V3-specific: mirrors & downloads
-          mirrors: (s.mirrors || []).map((m: any) => ({ name: m.name, url: m.url })),
+          mirrors: resolvedMirrors,
           downloads: s.downloads || [],
         });
       } else if (isV2) {

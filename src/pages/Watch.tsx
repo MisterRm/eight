@@ -109,9 +109,10 @@ export default function Watch({ slug, dataSource }: WatchProps) {
               setActiveUrl(data.defaultStreamingUrl);
             }
           } else if (dataSource === "Dayynime-v3") {
-            // Animekompi: gunakan mirror pertama atau default_iframe
+            // Animekompi: auto-pick bebas iklan / direct, fallback ke index 0
             if (data.mirrors && data.mirrors.length > 0) {
-              setActiveUrl(data.mirrors[0].url);
+              const preferred = data.mirrors.find((m: any) => m.isFree || m.isDirect) || data.mirrors[0];
+              setActiveUrl(preferred.url);
             } else if (data.defaultStreamingUrl) {
               setActiveUrl(data.defaultStreamingUrl);
             }
@@ -430,19 +431,23 @@ export default function Watch({ slug, dataSource }: WatchProps) {
             Pilih Server Mirror
           </label>
           <div className="grid grid-cols-2 gap-2">
-            {episode.mirrors.map((mirror, idx) => {
+            {episode.mirrors.map((mirror: any, idx: number) => {
               const isActive = activeUrl === mirror.url;
+              const isFree = mirror.isFree || mirror.isDirect;
               return (
                 <button
                   key={idx}
                   onClick={() => setActiveUrl(mirror.url)}
-                  className={`text-xs p-3 rounded-xl border text-center font-medium truncate cursor-pointer transition-all ${
+                  className={`text-xs p-3 rounded-xl border text-left font-medium cursor-pointer transition-all ${
                     isActive
                       ? "bg-white/10 text-white border-white/20 font-semibold"
                       : "bg-[#1a1c24] border-white/5 text-[#a0a5b5] hover:text-white"
                   }`}
                 >
-                  {mirror.name || `Server ${idx + 1}`}
+                  <span className="block truncate">{mirror.name || `Server ${idx + 1}`}</span>
+                  {isFree && (
+                    <span className="text-[10px] text-green-400 font-semibold mt-0.5 block">✓ Bebas Iklan</span>
+                  )}
                 </button>
               );
             })}
