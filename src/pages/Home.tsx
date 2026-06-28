@@ -14,7 +14,7 @@ interface HomeProps {
 }
 
 // Ranked list card — persis kek aniku
-function RankedCard({ anime, rank }: { anime: AnimeRaw; rank: number }) {
+function RankedCard({ anime, rank, forceType }: { anime: AnimeRaw; rank: number; forceType?: string }) {
   return (
     <div
       onClick={() => (window.location.hash = `#/detail/${anime.slug}`)}
@@ -55,7 +55,8 @@ function RankedCard({ anime, rank }: { anime: AnimeRaw; rank: number }) {
           {(() => {
             const s = (anime.status || "").toLowerCase();
             const isCompleted = s.includes("comp") || s.includes("tamat") || s.includes("finish");
-            const isMovie = (anime.type || "").toLowerCase().includes("movie");
+            const effectiveType = forceType || anime.type || "";
+            const isMovie = effectiveType.toLowerCase().includes("movie");
             const color = isMovie ? "#a855f7" : isCompleted ? "#2196F3" : "#4CAF50";
             const label = isMovie ? "Movie" : isCompleted ? "Completed" : "Ongoing";
             return (
