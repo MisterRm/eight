@@ -255,14 +255,14 @@ export default function Home({ dataSource }: HomeProps) {
       {/* FEATURED CARD — big portrait card kek referensi */}
       <div className="px-5 mb-7">
         {loading ? (
-          <div className="w-full rounded-3xl bg-[#121319] animate-pulse border border-white/5" style={{height: "68vw"}} />
+          <div className="w-full rounded-3xl bg-[#121319] animate-pulse border border-white/5" style={{ height: "min(68vw, 420px)" }} />
         ) : ongoing.length > 0 ? (() => {
           const feat = ongoing[0];
           return (
             <div
               onClick={() => window.location.hash = `#/detail/${feat.slug}`}
               className="relative w-full rounded-3xl overflow-hidden cursor-pointer"
-              style={{height: "68vw"}}
+              style={{ height: "min(68vw, 420px)" }}
             >
               <img
                 src={feat.poster}
@@ -363,7 +363,7 @@ export default function Home({ dataSource }: HomeProps) {
             See all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col sm:grid sm:grid-cols-2 sm:gap-x-3 gap-2.5">
           {loading
             ? [1,2,3,4,5].map(i => <RankedShimmer key={i} />)
             : ongoing.slice(0, 8).map((anime, i) => (
@@ -405,7 +405,7 @@ export default function Home({ dataSource }: HomeProps) {
             See all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col sm:grid sm:grid-cols-2 sm:gap-x-3 gap-2.5">
           {loadingCompleted
             ? [1,2,3,4,5].map(i => <RankedShimmer key={i} />)
             : completed.slice(0, 8).map((anime, i) => (

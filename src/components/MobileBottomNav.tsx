@@ -49,10 +49,10 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
   };
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] sm:max-w-[600px] md:max-w-[860px] lg:max-w-[1100px] z-50">
       <div
         ref={barRef}
-        className="border-t border-white/5 rounded-t-[28px] pt-3 px-2 flex items-stretch justify-between"
+        className="border-t border-white/5 rounded-t-[28px] pt-3 px-2 flex items-stretch justify-center"
         style={{
           backgroundColor: "rgba(14, 16, 21, 0.85)",
           backdropFilter: "blur(16px)",
@@ -61,6 +61,7 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
           boxShadow: "0 -8px 30px rgba(0,0,0,0.35)",
         }}
       >
+        <div className="flex items-stretch justify-between w-full max-w-[420px]">
         {tabs.map((tab) => {
           const active = isTabActive(tab.hash);
           const IconComponent = tab.icon;
@@ -87,6 +88,7 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
             </button>
           );
         })}
+        </div>
       </div>
     </div>
   );

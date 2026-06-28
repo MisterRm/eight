@@ -188,14 +188,14 @@ export default function Detail({ slug, dataSource }: DetailProps) {
       id="detail-page"
     >
       {/* 1. HERO BANNER — portrait style dengan overlay info */}
-      <div className="relative w-full bg-[#121319]" style={{minHeight: "72vw", maxHeight: "90vw"}}>
+      <div className="relative w-full bg-[#121319]" style={{ minHeight: "min(72vw, 440px)", maxHeight: "min(90vw, 520px)" }}>
         {/* Poster full bleed */}
         <img
           src={detail.poster}
           alt={detail.title}
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover absolute inset-0"
-          style={{minHeight: "72vw", maxHeight: "90vw", objectPosition: "top center"}}
+          style={{ minHeight: "min(72vw, 440px)", maxHeight: "min(90vw, 520px)", objectPosition: "top center" }}
         />
         {/* Dark gradient bottom-heavy */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0e1015] via-[#0e1015]/60 to-transparent z-10" />

@@ -129,7 +129,7 @@ export default function Search({ dataSource }: SearchProps) {
 
       {/* Results Content */}
       {loading ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <ShimmerCard key={i} />
           ))}
@@ -141,7 +141,7 @@ export default function Search({ dataSource }: SearchProps) {
         </div>
       ) : results.length > 0 ? (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {results.map((anime) => (
               <AnimeCard key={anime.slug} anime={anime} />
             ))}

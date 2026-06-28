@@ -170,7 +170,7 @@ export default function Schedule({ dataSource }: ScheduleProps) {
         className="px-5 flex flex-col gap-3"
       >
         {loading ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[1, 2, 3, 4].map((i) => (
               <div 
                 key={i} 
@@ -194,7 +194,7 @@ export default function Schedule({ dataSource }: ScheduleProps) {
             </span>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {dayList.map((anime) => (
               <div
                 key={anime.slug}

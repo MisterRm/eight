@@ -153,10 +153,10 @@ export default function Explore({ dataSource, gridLayout }: ExploreProps) {
 
   const gridClasses =
     gridLayout === "cols-2"
-      ? "grid grid-cols-2 gap-3"
+      ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
       : gridLayout === "cols-3"
-      ? "grid grid-cols-3 gap-2.5"
-      : "flex flex-col gap-4";
+      ? "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5"
+      : "flex flex-col sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-4";
 
   return (
     <motion.div
@@ -251,8 +251,8 @@ export default function Explore({ dataSource, gridLayout }: ExploreProps) {
         )}
 
         {loading && (
-          <div className="grid grid-cols-2 gap-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => <ShimmerCard key={i} />)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => <ShimmerCard key={i} />)}
           </div>
         )}
 
