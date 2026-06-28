@@ -51,7 +51,7 @@ export default function SidebarDrawer({ isOpen, onClose, currentHash }: SidebarD
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-12 pb-6 border-b border-white/5">
               <div className="flex items-center gap-2 select-none">
-                <span className="font-bold text-xl tracking-tight text-white">Eight</span>
+                <img src="/logo.png" alt="Eight" className="h-8 w-auto object-contain" />
                 <span className="px-2 py-0.5 rounded-full bg-[#f04438]/15 text-[#f04438] text-[9px] font-bold tracking-wider uppercase">Anime</span>
               </div>
               <button

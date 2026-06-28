@@ -27,7 +27,7 @@ export default function Footer() {
         {/* Brand */}
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="w-4 h-4" style={{ color: "var(--accent, #2196F3)" }} />
-          <span className="text-base font-bold text-white tracking-wide">Eight</span>
+          <img src="/logo.png" alt="Eight" className="h-6 w-auto object-contain" />
         </div>
         <p className="text-xs text-[#7a7f8e] leading-relaxed mb-5 max-w-[280px]">
           Nonton anime favoritmu, kapan aja, di mana aja. Tetep semangat ngejar episode terbaru~

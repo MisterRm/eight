@@ -216,7 +216,7 @@ export default function Home({ dataSource }: HomeProps) {
             <Menu className="w-6 h-6 stroke-[2]" />
           </button>
           <div className="flex items-center gap-2 select-none">
-            <span className="font-bold text-xl tracking-tight text-white">Eight</span>
+            <img src="/logo.png" alt="Eight" className="h-8 w-auto object-contain" />
             <span className="px-2 py-0.5 rounded-full bg-[#f04438]/15 text-[#f04438] text-[9px] font-bold tracking-wider uppercase">20 New</span>
           </div>
         </div>
