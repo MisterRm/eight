@@ -187,98 +187,98 @@ export default function Detail({ slug, dataSource }: DetailProps) {
       className="pb-28 bg-[#0e1015] min-h-screen"
       id="detail-page"
     >
-      {/* 1. HERO BANNER */}
-      <div className="relative w-full aspect-[16/10] bg-[#121319]">
+      {/* 1. HERO BANNER — portrait style dengan overlay info */}
+      <div className="relative w-full bg-[#121319]" style={{minHeight: "72vw", maxHeight: "90vw"}}>
+        {/* Poster full bleed */}
         <img
           src={detail.poster}
           alt={detail.title}
           referrerPolicy="no-referrer"
-          className="w-full h-full object-cover filter brightness-[0.85]"
+          className="w-full h-full object-cover absolute inset-0"
+          style={{minHeight: "72vw", maxHeight: "90vw", objectPosition: "top center"}}
         />
-        {/* Shadow Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e1015] via-[#0e1015]/20 to-black/35 z-10" />
+        {/* Dark gradient bottom-heavy */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0e1015] via-[#0e1015]/60 to-transparent z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent z-10" />
 
-        {/* Floating Top Nav */}
-        <div className="absolute top-4 left-5 right-5 z-30 flex items-center justify-between">
+        {/* Top Nav */}
+        <div className="absolute top-4 left-4 right-4 z-30 flex items-center justify-between">
           <button
             onClick={handleBack}
-            className="p-2.5 bg-black/45 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/60 transition-all cursor-pointer"
+            className="p-2 bg-black/50 backdrop-blur-md rounded-full border border-white/10 text-white cursor-pointer"
             aria-label="Kembali"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button
               onClick={handlePlayAll}
-              className="p-2.5 bg-black/45 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/60 transition-all cursor-pointer"
-              title="Cast to TV"
+              className="p-2 bg-black/50 backdrop-blur-md rounded-full border border-white/10 text-white cursor-pointer"
               aria-label="Cast"
             >
-              <Tv className="w-4.5 h-4.5" />
+              <Tv className="w-4 h-4" />
             </button>
             <button
               onClick={handleShare}
-              className="p-2.5 bg-black/45 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/60 transition-all cursor-pointer"
-              title="Bagikan"
+              className="p-2 bg-black/50 backdrop-blur-md rounded-full border border-white/10 text-white cursor-pointer"
               aria-label="Share"
             >
-              <Share2 className="w-4.5 h-4.5" />
+              <Share2 className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Floating Badges Bottom Left */}
-        <div className="absolute bottom-5 left-5 z-20 flex items-center gap-2.5 select-none">
-          <div className="px-3.5 py-1.5 bg-[#121319]/70 backdrop-blur-md border border-white/10 rounded-xl text-xs font-bold text-white">
-            {detail.type || "TV"}
+        {/* Info overlay di bawah hero */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 px-5 pb-5">
+          {/* Badges */}
+          <div className="flex items-center gap-2 mb-3 select-none">
+            <span className="px-2.5 py-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg text-[10px] font-bold text-white uppercase tracking-wide">
+              {detail.type || "TV"}
+            </span>
+            <span className="px-2.5 py-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg text-[10px] font-medium text-white flex items-center gap-1">
+              <Clock className="w-3 h-3 text-white/70" />
+              {detail.duration || "24m"}
+            </span>
+            {detail.score && detail.score !== "0" && detail.score !== "N/A" && (
+              <span className="px-2.5 py-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                <Star className="w-3 h-3 fill-current" />
+                {detail.score}
+              </span>
+            )}
           </div>
-          <div className="px-3.5 py-1.5 bg-[#121319]/70 backdrop-blur-md border border-white/10 rounded-xl text-xs font-bold text-white flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-[#a0a5b5]" />
-            <span className="text-white font-medium font-sans">{detail.duration || "24m"}</span>
+
+          {/* Title */}
+          <h1 className="font-bold text-[22px] tracking-tight leading-tight text-white font-sans mb-2">
+            {detail.title}
+          </h1>
+
+          {/* Tags */}
+          <div className="flex items-center flex-wrap gap-y-1 text-xs text-white/50 font-medium tracking-wide select-none">
+            {tagItems.map((tag, idx) => (
+              <div key={tag} className="flex items-center">
+                <span>{tag}</span>
+                {idx < tagItems.length - 1 && (
+                  <span className="mx-2 w-px h-3 bg-white/20 inline-block" />
+                )}
+              </div>
+            ))}
           </div>
-          {detail.score && detail.score !== "0" && detail.score !== "N/A" && (
-            <div className="px-3.5 py-1.5 bg-[#121319]/70 backdrop-blur-md border border-white/10 rounded-xl text-xs font-bold text-amber-400 flex items-center gap-1">
-              <Star className="w-3.5 h-3.5 fill-current" />
-              <span className="font-sans font-medium">{detail.score}</span>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* 2. METADATA SECTION */}
-      <div className="px-5 mt-5">
-        <h1 className="font-bold text-2xl tracking-tight leading-tight text-white font-sans">
-          {detail.title}
-        </h1>
-
-        {/* Tags Row */}
-        <div className="flex items-center flex-wrap gap-y-1.5 text-xs text-[#535766] font-medium tracking-wide mt-2.5 select-none">
-          {tagItems.map((tag, idx) => (
-            <div key={tag} className="flex items-center">
-              <span>{tag}</span>
-              {idx < tagItems.length - 1 && (
-                <span className="mx-2 w-px h-3 bg-[#535766]/50 inline-block" />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 3. ACTION ROW */}
-      <div className="flex gap-3 mt-6 px-5">
+      {/* 2. ACTION ROW */}
+      <div className="flex gap-3 mt-5 px-5">
         <button
           onClick={handlePlayAll}
           disabled={!detail.episodes || detail.episodes.length === 0}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#1a1c24] border border-white/5 hover:bg-white/5 rounded-2xl py-3.5 text-sm font-semibold text-white cursor-pointer transition-colors disabled:opacity-40"
+          className="flex-1 flex items-center justify-center gap-2 bg-white/8 border border-white/8 hover:bg-white/12 rounded-2xl py-3.5 text-sm font-semibold text-white cursor-pointer transition-colors disabled:opacity-40"
         >
-          <PlayCircle className="w-4.5 h-4.5" />
+          <PlayCircle className="w-5 h-5" />
           <span>Play all episodes</span>
         </button>
-
         <button
           onClick={toggleFavorite}
-          className="p-3.5 bg-[#1a1c24] border border-white/5 hover:bg-white/5 rounded-2xl transition-colors cursor-pointer flex items-center justify-center"
+          className="p-3.5 bg-white/8 border border-white/8 hover:bg-white/12 rounded-2xl transition-colors cursor-pointer flex items-center justify-center"
           aria-label="Favorit"
         >
           <Heart
