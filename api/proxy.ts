@@ -475,14 +475,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const r = await fetch(`${ANIME_BASE_URL_V3}episode/${slug}`);
         const s = ((await r.json()).data) || {};
 
-        // Sort mirrors: "Bebas Iklan" naik ke atas, sisanya urutan asli
+        // Resolve Filedon → direct stream, sort bebas iklan / direct dulu
         const rawMirrors: { name: string; url: string }[] = s.mirrors || [];
-        const resolvedMirrors = rawMirrors.map((m: any) => ({
-          name: m.name,
-          url: m.url,
-          isFree: /bebas iklan/i.test(m.name || ""),
-        }));
-        resolvedMirrors.sort((a, b) => (b.isFree ? 1 : 0) - (a.isFree ? 1 : 0));
+        const resolvedMirrors = await Promise.all(
+          rawMirrors.map(async (m: any) => {
+            const isFreeByName = /bebas iklan/i.test(m.name || "");
+            if (/filedon/i.test(m.url || "")) {
+              try {
+                const resolved = await extractFiledonStream(m.url);
+                if (resolved) {
+                  return { name: m.name, url: resolved.url, isDirect: true, isHls: resolved.isHls, isFree: true };
+                }
+              } catch {}
+            }
+            return { name: m.name, url: m.url, isDirect: false, isHls: false, isFree: isFreeByName };
+          })
+        );
+        // Sort: direct/free naik ke atas
+        resolvedMirrors.sort((a, b) => {
+          const aScore = (a.isDirect ? 2 : 0) + (a.isFree ? 1 : 0);
+          const bScore = (b.isDirect ? 2 : 0) + (b.isFree ? 1 : 0);
+          return bScore - aScore;
+        });
 
         const preferredUrl = resolvedMirrors[0]?.url || "";
 
