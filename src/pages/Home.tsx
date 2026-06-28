@@ -7,14 +7,14 @@ import AnimeCard from "../components/AnimeCard";
 import ShimmerCard from "../components/ShimmerCard";
 import SidebarDrawer from "../components/SidebarDrawer";
 import Footer from "../components/Footer";
-
+import { getHomeCache, setHomeCache } from "../App";
 
 interface HomeProps {
   dataSource: DataSource;
 }
 
 // Ranked list card — persis kek aniku
-function RankedCard({ anime, rank, forceType }: { anime: AnimeRaw; rank: number; forceType?: string }) {
+function RankedCard({ anime, rank }: { anime: AnimeRaw; rank: number }) {
   return (
     <div
       onClick={() => (window.location.hash = `#/detail/${anime.slug}`)}
@@ -53,10 +53,8 @@ function RankedCard({ anime, rank, forceType }: { anime: AnimeRaw; rank: number;
         {/* Status dot + label */}
         <div className="flex items-center gap-1.5 mb-1">
           {(() => {
-            const s = (anime.status || "").toLowerCase();
-            const isCompleted = s.includes("comp") || s.includes("tamat") || s.includes("finish");
-            const effectiveType = forceType || anime.type || "";
-            const isMovie = effectiveType.toLowerCase().includes("movie");
+            const isMovie = (anime.type || "").toLowerCase() === "movie";
+            const isCompleted = (anime.status || "").toLowerCase().includes("comp");
             const color = isMovie ? "#a855f7" : isCompleted ? "#2196F3" : "#4CAF50";
             const label = isMovie ? "Movie" : isCompleted ? "Completed" : "Ongoing";
             return (
@@ -109,25 +107,33 @@ function RankedShimmer() {
 export default function Home({ dataSource }: HomeProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [featured, setFeatured] = useState<FeaturedAnime[]>([]);
-  const [recent, setRecent] = useState<AnimeRaw[]>([]);
-  const [ongoing, setOngoing] = useState<AnimeRaw[]>([]);
-  const [completed, setCompleted] = useState<AnimeRaw[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingCompleted, setLoadingCompleted] = useState(true);
+  // Cek cache dulu — kalau ada, langsung pakai (tidak perlu loading)
+  const cached = getHomeCache(dataSource);
+  const [featured, setFeatured] = useState<FeaturedAnime[]>(cached?.featured ?? []);
+  const [recent, setRecent] = useState<AnimeRaw[]>(cached?.recent ?? []);
+  const [ongoing, setOngoing] = useState<AnimeRaw[]>(cached?.ongoing ?? []);
+  const [completed, setCompleted] = useState<AnimeRaw[]>(cached?.completed ?? []);
+  const [loading, setLoading] = useState(!cached);
+  const [loadingCompleted, setLoadingCompleted] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Kalau cache masih valid, skip fetch
+    if (getHomeCache(dataSource)) return;
+
     let active = true;
     const fetchHomeData = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch home & popular secara paralel untuk slider
-        const [homeRes, popularRes] = await Promise.all([
+        // Fetch featured & home secara paralel
+        const [featuredRes, homeRes] = await Promise.all([
+          fetch(`/api/proxy?route=featured_anime&source=${dataSource}`),
           fetch(`/api/proxy?route=home&source=${dataSource}`),
-          fetch(`/api/proxy?route=explore&tab=Popular&page=1&source=${dataSource}`),
         ]);
+
+        let featuredData: FeaturedAnime[] = [];
+        if (featuredRes.ok) featuredData = await featuredRes.json();
 
         if (!homeRes.ok) throw new Error("Gagal mengambil data beranda");
         const homeData = await homeRes.json();
@@ -135,24 +141,6 @@ export default function Home({ dataSource }: HomeProps) {
         const ongoingList: AnimeRaw[] = homeData.ongoing || [];
         const recentList: AnimeRaw[] = homeData.recent || homeData.recents || [];
 
-        // Featured slider dari Popular (ambil 7 teratas, poster lebih berkualitas)
-        let featuredData: FeaturedAnime[] = [];
-        if (popularRes.ok) {
-          const popularData = await popularRes.json();
-          const popularList: AnimeRaw[] = popularData.animes || [];
-          featuredData = popularList.slice(0, 7).map((a, i) => ({
-            id: i + 1,
-            anime_slug: a.slug,
-            anime_title: a.title,
-            anime_poster: a.poster,
-            order_index: i + 1,
-            anime_genres: a.genres || [],
-            anime_score: a.score,
-            anime_type: a.type,
-          }));
-        }
-
-        // Fallback ke ongoing kalau popular gagal
         if (featuredData.length === 0 && ongoingList.length > 0) {
           featuredData = ongoingList.slice(0, 5).map((a, i) => ({
             id: i + 1,
@@ -160,9 +148,6 @@ export default function Home({ dataSource }: HomeProps) {
             anime_title: a.title,
             anime_poster: a.poster,
             order_index: i + 1,
-            anime_genres: a.genres || [],
-            anime_score: a.score,
-            anime_type: a.type,
           }));
         }
 
@@ -181,8 +166,10 @@ export default function Home({ dataSource }: HomeProps) {
     return () => { active = false; };
   }, [dataSource]);
 
-  // Fetch movies separately
+  // Fetch completed separately — juga cek cache
   useEffect(() => {
+    if (getHomeCache(dataSource)) return;
+
     let active = true;
     const fetchMovies = async () => {
       setLoadingCompleted(true);
@@ -199,7 +186,12 @@ export default function Home({ dataSource }: HomeProps) {
     return () => { active = false; };
   }, [dataSource]);
 
-
+  // Simpan ke cache setelah semua data tersedia
+  useEffect(() => {
+    if (!loading && !loadingCompleted && ongoing.length > 0) {
+      setHomeCache({ featured, recent, ongoing, completed, dataSource });
+    }
+  }, [loading, loadingCompleted, ongoing.length]);
 
   const handleChipClick = (tabName: string, genreSlug?: string) => {
     if (genreSlug) window.location.hash = `#/explore?tab=Genres&genre=${genreSlug}`;
