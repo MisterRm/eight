@@ -68,15 +68,12 @@ export default function SettingsPage() {
     { id: "Dayynime-v2", label: "Samehadaku (v2)", desc: "Database lengkap, rilis tercepat, multi-resolusi." },
   ];
 
-  const activeColor = {
-    white: "border-white/40 ring-white/20",
-    blue: "border-[#2196F3]/60 ring-[#2196F3]/20",
-    purple: "border-[#9C27B0]/60 ring-[#9C27B0]/20",
-    green: "border-[#4CAF50]/60 ring-[#4CAF50]/20",
-    orange: "border-[#FF9800]/60 ring-[#FF9800]/20",
-  }[settings.colorAccent];
-
-  const activeBtn = `bg-white/10 text-white ${activeColor} border ring-1 font-semibold`;
+  const activeStyle = {
+    border: "1px solid var(--accent)",
+    boxShadow: "0 0 0 1px var(--accent)",
+    background: "rgba(255,255,255,0.07)",
+  };
+  const activeBtn = "text-white font-semibold";
   const inactiveBtn = "bg-[#121319] border border-white/5 text-[#a0a5b5] hover:text-white";
 
   return (
@@ -165,7 +162,7 @@ export default function SettingsPage() {
                 <button
                   key={opt.id}
                   onClick={() => handleSource(opt.id)}
-                  className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${active ? activeBtn : inactiveBtn}`}
+                  className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${active ? activeBtn : inactiveBtn}`} style={active ? activeStyle : {}}
                 >
                   <div className={`w-4 h-4 rounded-full border border-white/20 mt-0.5 flex-shrink-0 flex items-center justify-center ${active ? "bg-white/90" : ""}`}>
                     {active && <Check className="w-2.5 h-2.5 text-[#0e1015] stroke-[3]" />}
@@ -198,7 +195,7 @@ export default function SettingsPage() {
                 <button
                   key={opt.id}
                   onClick={() => handleAccent(opt.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${active ? activeBtn : inactiveBtn}`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${active ? activeBtn : inactiveBtn}`} style={active ? activeStyle : {}}
                 >
                   <span className={`w-3 h-3 rounded-full ${opt.dot} flex-shrink-0`} />
                   {opt.label}
@@ -221,7 +218,7 @@ export default function SettingsPage() {
                 <button
                   key={opt.id}
                   onClick={() => handleLayout(opt.id)}
-                  className={`flex-1 text-xs py-2.5 rounded-xl transition-all cursor-pointer ${active ? activeBtn : inactiveBtn}`}
+                  className={`flex-1 text-xs py-2.5 rounded-xl transition-all cursor-pointer ${active ? activeBtn : inactiveBtn}`} style={active ? activeStyle : {}}
                 >
                   {opt.label}
                 </button>
@@ -243,7 +240,7 @@ export default function SettingsPage() {
                 <button
                   key={opt.id}
                   onClick={() => handleTextSize(opt.id)}
-                  className={`flex-1 text-xs py-2.5 rounded-xl transition-all cursor-pointer ${active ? activeBtn : inactiveBtn}`}
+                  className={`flex-1 text-xs py-2.5 rounded-xl transition-all cursor-pointer ${active ? activeBtn : inactiveBtn}`} style={active ? activeStyle : {}}
                 >
                   {opt.label}
                 </button>

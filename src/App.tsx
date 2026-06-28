@@ -30,6 +30,26 @@ export default function App() {
     return () => window.removeEventListener("eight_settings_changed", handleSettingsChange);
   }, []);
 
+  // Apply accent color CSS variable + text size class to root
+  useEffect(() => {
+    const accentMap: Record<string, string> = {
+      white: "#ffffff",
+      blue: "#2196F3",
+      purple: "#9C27B0",
+      green: "#4CAF50",
+      orange: "#FF9800",
+    };
+    const root = document.documentElement;
+    root.style.setProperty("--accent", accentMap[settings.colorAccent] || "#ffffff");
+
+    const sizeMap: Record<string, string> = {
+      kecil: "13px",
+      sedang: "15px",
+      besar: "17px",
+    };
+    root.style.fontSize = sizeMap[settings.textSize] || "15px";
+  }, [settings.colorAccent, settings.textSize]);
+
   const renderPage = () => {
     const hash = currentHash;
 
