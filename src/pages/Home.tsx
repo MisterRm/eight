@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Radio, Play, Star } from "lucide-react";
+import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Radio, CheckCircle, Play, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { AnimeRaw, FeaturedAnime, DataSource } from "../types";
 import HeroCarousel from "../components/HeroCarousel";
@@ -52,18 +52,16 @@ function RankedCard({ anime, rank }: { anime: AnimeRaw; rank: number }) {
       <div className="relative flex-1 min-w-0 py-3 pr-3">
         {/* Status dot + label */}
         <div className="flex items-center gap-1.5 mb-1">
-          {(() => {
-            const isMovie = (anime.type || "").toLowerCase() === "movie";
-            const isCompleted = (anime.status || "").toLowerCase().includes("comp");
-            const color = isMovie ? "#a855f7" : isCompleted ? "#2196F3" : "#4CAF50";
-            const label = isMovie ? "Movie" : isCompleted ? "Completed" : "Ongoing";
-            return (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
-                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color }}>{label}</span>
-              </>
-            );
-          })()}
+          <span
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            style={{ background: anime.status?.toLowerCase().includes("comp") ? "#2196F3" : "#4CAF50" }}
+          />
+          <span
+            className="text-[9px] font-bold uppercase tracking-widest"
+            style={{ color: anime.status?.toLowerCase().includes("comp") ? "#2196F3" : "#4CAF50" }}
+          >
+            {anime.status || "Ongoing"}
+          </span>
         </div>
 
         <h4 className="text-sm font-bold text-white leading-tight line-clamp-2 mb-1.5">
@@ -419,7 +417,7 @@ export default function Home({ dataSource }: HomeProps) {
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#2196F3]/15 flex items-center justify-center">
-              <Play className="w-4 h-4 text-[#2196F3]" />
+              <CheckCircle className="w-4 h-4 text-[#2196F3]" />
             </div>
             <h2 className="text-base font-bold text-white uppercase tracking-wide">Baru Tamat</h2>
           </div>

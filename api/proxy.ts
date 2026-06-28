@@ -108,24 +108,15 @@ async function extractFiledonStream(embedUrl: string): Promise<{ url: string; is
   } catch { return null; }
 }
 
-function normalizeAnimasu(item: any, forceType?: string) {
+function normalizeAnimasu(item: any) {
   if (!item) return null;
-  const rawType = item.type || "";
-  // Animasu ngirim rating di field "type" (contoh: "★ 8", "★ N/A")
-  // kalau ada "★", berarti itu rating bukan type
-  const hasRatingInType = rawType.includes("★");
-  const score = hasRatingInType
-    ? rawType.replace("★", "").trim()
-    : (item.score || item.rating || null);
-  const type = forceType || (hasRatingInType ? null : rawType) || null;
-
   return {
     title: item.title || "Unknown",
     slug: (item.slug || "").trim(),
     poster: item.poster || item.image || "",
     episode: item.episode || null,
-    type,
-    score,
+    type: item.type || null,
+    score: item.score || item.rating || null,
     status: item.status || null,
     release: item.release || null,
     genres: item.genres ? item.genres.map((g: any) => typeof g === "string" ? g : g.name || g.title) : [],
@@ -241,10 +232,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else {
         const epMap: Record<string, string> = { Popular:"popular", Movies:"movies", Completed:"completed", Latest:"latest", All:"animelist", Genres:`genre/${genreSlug}` };
         const ep = epMap[tab] || "ongoing";
-        const isMovieTab = tab === "Movies";
         const data = await fetchWithCache(cacheKey, async () => {
           const d = await upstream(`${ANIME_BASE_URL}animasu/${ep}?apikey=${ANIME_API_KEY}&page=${page}`);
-          return { animes: (d.animes || []).map((a: any) => normalizeAnimasu(a, isMovieTab ? "Movie" : undefined)).filter(Boolean), pagination: { hasNext: !!d.pagination?.hasNext, hasPrev: !!d.pagination?.hasPrev, currentPage: Number(d.pagination?.currentPage || page) } };
+          return { animes: (d.animes || []).map(normalizeAnimasu).filter(Boolean), pagination: { hasNext: !!d.pagination?.hasNext, hasPrev: !!d.pagination?.hasPrev, currentPage: Number(d.pagination?.currentPage || page) } };
         }, TTL.explore);
         return res.json({ animes: filterBlacklist(data.animes, blacklist), pagination: data.pagination });
       }
