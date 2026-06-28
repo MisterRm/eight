@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Radio, CheckCircle } from "lucide-react";
+import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Radio, CheckCircle, Play, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { AnimeRaw, FeaturedAnime, DataSource } from "../types";
 import HeroCarousel from "../components/HeroCarousel";
@@ -185,21 +185,21 @@ export default function Home({ dataSource }: HomeProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 12 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="pb-24 pt-4"
+      className="pb-28 min-h-screen bg-[#0e1015]"
       id="home-page"
     >
       {/* TOP BAR */}
-      <div className="flex justify-between items-center pt-2 pb-5 px-5">
+      <div className="flex justify-between items-center pt-10 pb-4 px-5">
         <div className="flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)} className="text-[#a0a5b5] hover:text-white cursor-pointer">
-            <Menu className="w-6 h-6 stroke-[2.2]" />
+            <Menu className="w-6 h-6 stroke-[2]" />
           </button>
-          <div className="flex items-center gap-1.5 select-none">
+          <div className="flex items-center gap-2 select-none">
             <span className="font-bold text-xl tracking-tight text-white">Eight</span>
-            <span className="ml-1 px-2 py-0.5 rounded-full bg-[#f04438]/15 text-[#f04438] text-[9px] font-bold tracking-wider uppercase">20 New</span>
+            <span className="px-2 py-0.5 rounded-full bg-[#f04438]/15 text-[#f04438] text-[9px] font-bold tracking-wider uppercase">20 New</span>
           </div>
         </div>
-        <button className="p-2 bg-[#1a1c24] hover:bg-white/5 rounded-full relative cursor-pointer transition-colors">
+        <button className="p-2 bg-[#121319] rounded-full relative cursor-pointer border border-white/5">
           <Bell className="w-4.5 h-4.5 text-[#a0a5b5]" />
           <span className="absolute top-1 right-1 w-2 h-2 bg-[#f04438] rounded-full" />
         </button>
@@ -209,38 +209,41 @@ export default function Home({ dataSource }: HomeProps) {
       <div className="px-5 mb-5">
         <div
           onClick={() => window.location.hash = "#/search"}
-          className="relative bg-[#121319]/80 border border-white/5 rounded-2xl py-3.5 pl-11 pr-12 cursor-pointer transition-colors hover:bg-[#1a1c24]/80 flex items-center"
+          className="relative bg-[#121319] border border-white/5 rounded-2xl py-3 pl-11 pr-12 cursor-pointer flex items-center"
         >
           <Search className="w-4.5 h-4.5 text-[#535766] absolute left-4" />
-          <span className="text-[#535766] text-sm font-sans select-none">Cari anime favoritmu...</span>
+          <span className="text-[#535766] text-sm font-sans select-none">Search movie, series</span>
           <button
             onClick={(e) => { e.stopPropagation(); window.location.hash = "#/explore"; }}
-            className="absolute right-3 p-1.5 bg-[#1a1c24]/80 rounded-lg hover:bg-white/10 text-[#a0a5b5] cursor-pointer"
+            className="absolute right-3 p-1.5 bg-[#1a1c24] rounded-lg text-[#a0a5b5] cursor-pointer"
           >
             <SlidersHorizontal className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* FILTER CHIPS — single horizontal scroll */}
+      {/* FILTER CHIPS */}
       <div className="mb-5">
         <div className="flex gap-2 overflow-x-auto px-5 pb-1 scrollbar-none">
           {[
-            { label: "Semua", tab: "All" },
-            { label: "Terpopuler", tab: "Popular" },
-            { label: "Rating Tinggi", tab: "Popular" },
+            { label: "All", tab: "All" },
+            { label: "Popular", tab: "Popular" },
+            { label: "User ratings", tab: "Popular" },
             { label: "Movies", tab: "Movies" },
             { label: "Action", tab: "Genres", genre: "action" },
-            { label: "Fantasy", tab: "Genres", genre: "fantasy" },
+            { label: "Futuristic", tab: "Genres", genre: "sci-fi" },
             { label: "Comedy", tab: "Genres", genre: "comedy" },
             { label: "Romance", tab: "Genres", genre: "romance" },
-            { label: "Sci-Fi", tab: "Genres", genre: "sci-fi" },
-            { label: "Horror", tab: "Genres", genre: "horror" },
-          ].map((chip) => (
+            { label: "Fantasy", tab: "Genres", genre: "fantasy" },
+          ].map((chip, idx) => (
             <button
               key={chip.label}
               onClick={() => handleChipClick(chip.tab, (chip as any).genre)}
-              className="bg-[#121319]/80 border border-white/5 text-[#a0a5b5] hover:text-white hover:border-white/15 rounded-2xl text-xs px-4 py-2 flex-shrink-0 cursor-pointer transition-colors whitespace-nowrap"
+              className={`rounded-2xl text-xs px-4 py-2 flex-shrink-0 cursor-pointer transition-all whitespace-nowrap font-medium border ${
+                idx === 0
+                  ? "bg-white text-[#0e1015] border-white"
+                  : "bg-[#121319] border-white/8 text-[#a0a5b5] hover:text-white hover:border-white/20"
+              }`}
             >
               {chip.label}
             </button>
@@ -248,25 +251,89 @@ export default function Home({ dataSource }: HomeProps) {
         </div>
       </div>
 
-      {/* HERO CAROUSEL */}
-      <div className="px-5 mb-6">
+      {/* FEATURED CARD — big portrait card kek referensi */}
+      <div className="px-5 mb-7">
         {loading ? (
-          <div className="w-full h-[280px] bg-[#121319] rounded-3xl animate-pulse border border-white/5" />
-        ) : (
-          <HeroCarousel featured={featured} />
-        )}
+          <div className="w-full rounded-3xl bg-[#121319] animate-pulse border border-white/5" style={{height: "68vw"}} />
+        ) : ongoing.length > 0 ? (() => {
+          const feat = ongoing[0];
+          return (
+            <div
+              onClick={() => window.location.hash = `#/detail/${feat.slug}`}
+              className="relative w-full rounded-3xl overflow-hidden cursor-pointer"
+              style={{height: "68vw"}}
+            >
+              <img
+                src={feat.poster}
+                alt={feat.title}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover object-top"
+              />
+              {/* Dark overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10" />
+
+              {/* Top left — FEATURED badge */}
+              <div className="absolute top-4 left-4 flex items-center gap-1.5">
+                <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Featured</span>
+              </div>
+
+              {/* Score top right */}
+              {feat.score && feat.score !== "N/A" && feat.score !== "0" && (
+                <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm rounded-xl px-2.5 py-1 flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                  <span className="text-white text-xs font-bold">{feat.score}</span>
+                </div>
+              )}
+
+              {/* Bottom info */}
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                {/* Genre chips */}
+                {feat.genres && feat.genres.length > 0 && (
+                  <div className="flex gap-2 mb-2">
+                    {feat.genres.slice(0, 2).map((g: string) => (
+                      <span key={g} className="px-2.5 py-0.5 bg-white/15 backdrop-blur-sm rounded-lg text-[10px] font-semibold text-white">
+                        {g}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <h2 className="text-white font-bold text-xl leading-tight mb-1">{feat.title}</h2>
+                <p className="text-white/60 text-xs leading-relaxed line-clamp-2">
+                  Saksikan episode terbaru dari anime terpopuler season ini. Nikmati pengalaman streaming berkualitas tinggi hanya di Eight.
+                </p>
+                {/* Actions */}
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); window.location.hash = `#/detail/${feat.slug}`; }}
+                    className="flex items-center gap-2 bg-white text-[#0e1015] rounded-xl px-4 py-2.5 text-xs font-bold cursor-pointer"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    Watch Now
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); window.location.hash = `#/detail/${feat.slug}`; }}
+                    className="flex items-center gap-2 bg-white/15 backdrop-blur-sm text-white rounded-xl px-4 py-2.5 text-xs font-bold cursor-pointer"
+                  >
+                    Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })() : null}
       </div>
 
       {error && !loading && (
-        <div className="px-5 mb-6">
+        <div className="px-5 mb-5">
           <div className="bg-red-500/10 border border-red-500/25 rounded-2xl p-4 text-center text-red-400 text-xs font-medium">{error}</div>
         </div>
       )}
 
-      {/* NEW RELEASES — horizontal scroll */}
-      <div className="mb-6">
+      {/* NEW RELEASES */}
+      <div className="mb-7">
         <div className="flex justify-between items-center px-5 mb-3">
-          <h2 className="text-base font-semibold text-white font-sans">New Releases</h2>
+          <h2 className="text-base font-semibold text-white">New Releases</h2>
           <button onClick={() => handleSeeAll("Latest")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
             See all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
@@ -275,8 +342,6 @@ export default function Home({ dataSource }: HomeProps) {
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-none">
             {[1,2,3,4].map(i => <div key={i} className="w-32 flex-shrink-0"><ShimmerCard /></div>)}
           </div>
-        ) : recent.length === 0 ? (
-          <div className="px-5 text-xs text-[#535766] font-mono">Tidak ada rilis baru.</div>
         ) : (
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-none">
             {recent.map(anime => <div key={anime.slug} className="w-32 flex-shrink-0"><AnimeCard anime={anime} /></div>)}
@@ -284,8 +349,8 @@ export default function Home({ dataSource }: HomeProps) {
         )}
       </div>
 
-      {/* TOP ONGOING — ranked list */}
-      <div className="mb-6 px-5">
+      {/* TOP ONGOING — ranked */}
+      <div className="mb-7 px-5">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#f04438]/15 flex items-center justify-center">
@@ -294,7 +359,7 @@ export default function Home({ dataSource }: HomeProps) {
             <h2 className="text-base font-bold text-white uppercase tracking-wide">Top Ongoing</h2>
           </div>
           <button onClick={() => handleSeeAll("Ongoing")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
-            See All <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+            See all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
         <div className="flex flex-col gap-2.5">
@@ -307,10 +372,10 @@ export default function Home({ dataSource }: HomeProps) {
         </div>
       </div>
 
-      {/* ONGOING SERIES — horizontal scroll */}
-      <div className="mb-6">
+      {/* ONGOING SERIES — horizontal */}
+      <div className="mb-7">
         <div className="flex justify-between items-center px-5 mb-3">
-          <h2 className="text-base font-semibold text-white font-sans">Ongoing Series</h2>
+          <h2 className="text-base font-semibold text-white">Ongoing Series</h2>
           <button onClick={() => handleSeeAll("Ongoing")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
             See all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
@@ -319,8 +384,6 @@ export default function Home({ dataSource }: HomeProps) {
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-none">
             {[1,2,3,4].map(i => <div key={i} className="w-32 flex-shrink-0"><ShimmerCard /></div>)}
           </div>
-        ) : ongoing.length === 0 ? (
-          <div className="px-5 text-xs text-[#535766] font-mono">Tidak ada anime ongoing.</div>
         ) : (
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-none">
             {ongoing.map(anime => <div key={anime.slug} className="w-32 flex-shrink-0"><AnimeCard anime={anime} /></div>)}
@@ -328,8 +391,8 @@ export default function Home({ dataSource }: HomeProps) {
         )}
       </div>
 
-      {/* BARU TAMAT — ranked list */}
-      <div className="mb-6 px-5">
+      {/* BARU TAMAT — ranked */}
+      <div className="mb-7 px-5">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#2196F3]/15 flex items-center justify-center">
@@ -338,7 +401,7 @@ export default function Home({ dataSource }: HomeProps) {
             <h2 className="text-base font-bold text-white uppercase tracking-wide">Baru Tamat</h2>
           </div>
           <button onClick={() => handleSeeAll("Completed")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
-            See All <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+            See all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
         <div className="flex flex-col gap-2.5">
@@ -358,4 +421,5 @@ export default function Home({ dataSource }: HomeProps) {
       />
     </motion.div>
   );
+
 }
