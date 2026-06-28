@@ -4,6 +4,9 @@ export interface FeaturedAnime {
   anime_title: string;
   anime_poster: string;
   order_index: number;
+  anime_genres?: string[];
+  anime_score?: string | null;
+  anime_type?: string | null;
 }
 
 export interface Announcement {
