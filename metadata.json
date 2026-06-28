@@ -1,0 +1,6 @@
+{
+  "name": "Eight",
+  "description": "Eight is a pixel-close Indonesian anime streaming web application using Dayynime stream sources, smooth transitions, and client-side settings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
