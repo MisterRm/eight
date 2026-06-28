@@ -299,6 +299,7 @@ export default function Watch({ slug, dataSource }: WatchProps) {
               scrolling="no"
               referrerPolicy="no-referrer"
               title={episode.title}
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen"
             />
           )
         ) : (
