@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState , useRef } from "react";
 import { Compass, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { AnimeRaw, DataSource, ActiveTab, GridLayout } from "../types";
@@ -66,6 +66,31 @@ export default function Explore({ dataSource, gridLayout }: ExploreProps) {
   }, [dataSource]);
 
   // Fetch anime list
+  // Swipe
+  const tabs_list = ["Popular", "Movies", "Ongoing", "Completed", "Latest", "Genres"] as const;
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+  const [slideDir, setSlideDir] = useState<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    if (Math.abs(dx) < 50 || dy > 60) return;
+    const currentIdx = tabs.indexOf(activeTab as any);
+    if (dx < 0 && currentIdx < tabs.length - 1) {
+      setSlideDir(-1);
+      handleTabChange(tabs[currentIdx + 1]);
+    } else if (dx > 0 && currentIdx > 0) {
+      setSlideDir(1);
+      handleTabChange(tabs[currentIdx - 1]);
+    }
+  };
+
   const fetchExploreData = async (tab: ActiveTab, page: number, genre: string | null) => {
     setLoading(true);
     setError(null);
@@ -172,6 +197,15 @@ export default function Explore({ dataSource, gridLayout }: ExploreProps) {
         })}
       </div>
 
+      {/* Swipeable content */}
+      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} className="overflow-hidden">
+      <motion.div
+        key={activeTab}
+        initial={{ x: slideDir * -60, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: slideDir * 60, opacity: 0 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+      >
       {/* Genre Chips */}
       {activeTab === "Genres" && (
         <div className="px-5 mb-6">
@@ -295,6 +329,8 @@ export default function Explore({ dataSource, gridLayout }: ExploreProps) {
             Tidak ada anime yang ditemukan.
           </div>
         )}
+      </div>
+      </motion.div>
       </div>
     </motion.div>
   );

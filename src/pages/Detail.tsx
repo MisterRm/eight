@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState , useRef } from "react";
 import { 
   ChevronLeft, Tv, Share2, Clock, PlayCircle, Heart, Star, ChevronDown, 
   BookOpen, Play, Calendar, AlertCircle
@@ -17,6 +17,29 @@ export default function Detail({ slug, dataSource }: DetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"about" | "episodes">("about");
+  const [slideDir, setSlideDir] = useState<number>(0);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+  const detailTabs = ["about", "episodes"] as const;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    if (Math.abs(dx) < 50 || dy > 60) return;
+    const currentIdx = detailTabs.indexOf(activeTab);
+    if (dx < 0 && currentIdx < detailTabs.length - 1) {
+      setSlideDir(-1);
+      setActiveTab(detailTabs[currentIdx + 1]);
+    } else if (dx > 0 && currentIdx > 0) {
+      setSlideDir(1);
+      setActiveTab(detailTabs[currentIdx - 1]);
+    }
+  };
   const [isFavorited, setIsFavorited] = useState(false);
 
   // Load favorite status
@@ -301,7 +324,15 @@ export default function Detail({ slug, dataSource }: DetailProps) {
         </button>
       </div>
 
-      {/* 5. TAB CONTENT: ABOUT */}
+      {/* 5. TAB CONTENT */}
+      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} className="overflow-hidden">
+      <motion.div
+        key={activeTab}
+        initial={{ x: slideDir * -60, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: slideDir * 60, opacity: 0 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+      >
       {activeTab === "about" && (
         <div className="px-5 pt-5">
           <h3 className="text-base font-semibold text-white mb-3 font-sans flex items-center gap-2">
@@ -427,6 +458,8 @@ export default function Detail({ slug, dataSource }: DetailProps) {
           </div>
         </div>
       )}
+      </motion.div>
+      </div>
     </motion.div>
   );
 }

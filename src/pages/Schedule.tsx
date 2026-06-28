@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Calendar, Clock, AlertCircle, ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { AnimeRaw, DataSource } from "../types";
@@ -95,6 +95,30 @@ export default function Schedule({ dataSource }: ScheduleProps) {
     return list || [];
   };
 
+  // Swipe gesture
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+  const [slideDir, setSlideDir] = useState<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    if (Math.abs(dx) < 50 || dy > 60) return;
+    const currentIdx = dayTabs.findIndex(d => d.id === activeDay);
+    if (dx < 0 && currentIdx < dayTabs.length - 1) {
+      setSlideDir(-1);
+      setActiveDay(dayTabs[currentIdx + 1].id);
+    } else if (dx > 0 && currentIdx > 0) {
+      setSlideDir(1);
+      setActiveDay(dayTabs[currentIdx - 1].id);
+    }
+  };
+
   const dayList = getSchedulesForDay(activeDay);
 
   const handleAnimeClick = (slug: string) => {
@@ -142,7 +166,19 @@ export default function Schedule({ dataSource }: ScheduleProps) {
       </div>
 
       {/* Schedules Content List */}
-      <div className="px-5 flex flex-col gap-3">
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="overflow-hidden"
+      >
+      <motion.div
+        key={activeDay}
+        initial={{ x: slideDir * -60, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: slideDir * 60, opacity: 0 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className="px-5 flex flex-col gap-3"
+      >
         {loading ? (
           <div className="flex flex-col gap-3">
             {[1, 2, 3, 4].map((i) => (
@@ -209,6 +245,7 @@ export default function Schedule({ dataSource }: ScheduleProps) {
             ))}
           </div>
         )}
+      </motion.div>
       </div>
     </motion.div>
   );

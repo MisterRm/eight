@@ -1,4 +1,4 @@
-import { Home, Search, LayoutGrid, Clapperboard, User } from "lucide-react";
+import { Home, Search, Compass, CalendarDays, User } from "lucide-react";
 
 interface MobileBottomNavProps {
   currentHash: string;
@@ -9,8 +9,8 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
   const tabs = [
     { id: "home", label: "Home", hash: "#/", icon: Home },
     { id: "search", label: "Search", hash: "#/search", icon: Search },
-    { id: "explore", label: "Category", hash: "#/explore", icon: LayoutGrid },
-    { id: "schedule", label: "Clips", hash: "#/schedule", icon: Clapperboard },
+    { id: "explore", label: "Explore", hash: "#/explore", icon: Compass },
+    { id: "schedule", label: "Schedule", hash: "#/schedule", icon: CalendarDays },
     { id: "settings", label: "Profile", hash: "#/settings", icon: User },
   ];
 
