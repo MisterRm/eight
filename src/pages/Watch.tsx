@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { 
   ArrowLeft, ChevronLeft, ChevronRight, Monitor, Settings, HardDrive, 
   RefreshCw, AlertCircle, PlayCircle
 } from "lucide-react";
 import { motion } from "motion/react";
+import Hls from "hls.js";
 import { EpisodePayload, DataSource } from "../types";
 
 interface WatchProps {
@@ -30,6 +31,8 @@ export default function Watch({ slug, dataSource }: WatchProps) {
   const [loadingServer, setLoadingServer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeUrl, setActiveUrl] = useState<string>("");
+  const [isDirectVideo, setIsDirectVideo] = useState(false);
+  const [isHlsVideo, setIsHlsVideo] = useState(false);
   
   // V1 stream index
   const [selectedStreamIdx, setSelectedStreamIdx] = useState(0);
@@ -37,6 +40,31 @@ export default function Watch({ slug, dataSource }: WatchProps) {
   // V2 Quality & Server states
   const [selectedQualityIdx, setSelectedQualityIdx] = useState(0);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Attach hls.js kalau direct video URL-nya format HLS (.m3u8) dan browser
+  // gak native-support HLS (cuma Safari yang native; Chrome/Android butuh hls.js).
+  useEffect(() => {
+    if (!isDirectVideo || !isHlsVideo || !activeUrl) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      // Safari: native HLS support, langsung set src
+      video.src = activeUrl;
+      return;
+    }
+
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(activeUrl);
+      hls.attachMedia(video);
+      return () => {
+        hls.destroy();
+      };
+    }
+  }, [activeUrl, isDirectVideo, isHlsVideo]);
 
   // Back to previous slug
   const handleBack = () => {
@@ -57,6 +85,8 @@ export default function Watch({ slug, dataSource }: WatchProps) {
       setLoading(true);
       setError(null);
       setActiveUrl("");
+      setIsDirectVideo(false);
+      setIsHlsVideo(false);
       setSelectedStreamIdx(0);
       setSelectedQualityIdx(0);
       setSelectedServerId(null);
@@ -128,6 +158,8 @@ export default function Watch({ slug, dataSource }: WatchProps) {
       const serverData = await res.json();
       if (serverData && serverData.url) {
         setActiveUrl(serverData.url);
+        setIsDirectVideo(!!serverData.isDirect);
+        setIsHlsVideo(!!serverData.isHls);
       } else {
         throw new Error("Server tidak mengembalikan url pemutar.");
       }
@@ -136,6 +168,8 @@ export default function Watch({ slug, dataSource }: WatchProps) {
       // Fallback to default streaming if possible
       if (episode?.defaultStreamingUrl) {
         setActiveUrl(episode.defaultStreamingUrl);
+        setIsDirectVideo(false);
+        setIsHlsVideo(false);
       } else {
         setError("Gagal memuat streaming dari server terpilih.");
       }
@@ -228,14 +262,35 @@ export default function Watch({ slug, dataSource }: WatchProps) {
         ) : null}
 
         {activeUrl ? (
-          <iframe
-            src={activeUrl}
-            className="w-full h-full border-0"
-            allowFullScreen
-            scrolling="no"
-            referrerPolicy="no-referrer"
-            title={episode.title}
-          />
+          isDirectVideo ? (
+            isHlsVideo ? (
+              <video
+                ref={videoRef}
+                className="w-full h-full"
+                controls
+                playsInline
+                autoPlay
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                src={activeUrl}
+                className="w-full h-full"
+                controls
+                playsInline
+                autoPlay
+              />
+            )
+          ) : (
+            <iframe
+              src={activeUrl}
+              className="w-full h-full border-0"
+              allowFullScreen
+              scrolling="no"
+              referrerPolicy="no-referrer"
+              title={episode.title}
+            />
+          )
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#535766]">
             <PlayCircle className="w-10 h-10 stroke-[1.2]" />

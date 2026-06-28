@@ -27,6 +27,50 @@ async function getBlacklistedSlugs(): Promise<Set<string>> {
   }
 }
 
+const DESKTOP_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+/**
+ * Filedon embed page (Inertia.js/Laravel) nyimpen link video langsung (presigned S3 URL)
+ * statis di atribut data-page="{...}" sebagai JSON yang di-HTML-encode. Gak perlu unpack JS,
+ * cuma fetch HTML mentahnya terus parse JSON-nya. Port dari VideoExtractor.kt (Aniku Android).
+ *
+ * Penting: pesan "Embed Access Restricted" yang muncul di browser itu cuma tampilan JS
+ * client-side punya Filedon — data video aslinya udah ada di HTML mentah yang dikirim
+ * server, jadi fetch dari sini (server-side) gak kena restriction itu.
+ */
+async function extractFiledonStream(embedUrl: string): Promise<{ url: string; isHls: boolean } | null> {
+  try {
+    const res = await fetch(embedUrl, {
+      headers: { "User-Agent": DESKTOP_UA, Referer: embedUrl },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    const match = html.match(/data-page="([^"]*)"/);
+    if (!match) return null;
+
+    const decoded = match[1]
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">");
+
+    const data = JSON.parse(decoded);
+    const props = data?.props || {};
+    const hlsUrl: string | undefined = props?.media?.hls_url;
+    const directUrl: string | undefined = props?.url;
+
+    const url = (hlsUrl && hlsUrl !== "null" ? hlsUrl : null) || (directUrl && directUrl !== "null" ? directUrl : null);
+    if (!url) return null;
+
+    return { url, isHls: url.includes(".m3u8") };
+  } catch {
+    return null;
+  }
+}
+
 function normalizeAnimasu(item: any) {
   if (!item) return null;
   return {
@@ -299,7 +343,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!serverId) return res.status(400).json({ error: "serverId diperlukan" });
       const r = await fetch(`${ANIME_BASE_URL}samehadaku/server/${serverId}`);
       const d = await r.json();
-      return res.json(d.data || { url: "" });
+      const result = d.data || { url: "" };
+
+      // Kalau embed-nya dari Filedon, coba ekstrak direct link video-nya di server
+      // supaya frontend gak perlu nge-iframe halaman Filedon (yang sering nampilin
+      // "Embed Access Restricted" di browser). Kalau ekstraksi gagal, fallback ke
+      // URL embed asli (behavior lama, tetap pakai iframe).
+      if (result.url && /filedon/i.test(result.url)) {
+        const resolved = await extractFiledonStream(result.url);
+        if (resolved) {
+          return res.json({ url: resolved.url, isDirect: true, isHls: resolved.isHls });
+        }
+      }
+
+      return res.json(result);
     }
 
     return res.status(404).json({ error: "Route tidak ditemukan" });
