@@ -171,10 +171,10 @@ export default function Home({ dataSource }: HomeProps) {
     if (getHomeCache(dataSource)) return;
 
     let active = true;
-    const fetchMovies = async () => {
+    const fetchCompleted = async () => {
       setLoadingCompleted(true);
       try {
-        const res = await fetch(`/api/proxy?route=explore&tab=Movies&page=1&source=${dataSource}`);
+        const res = await fetch(`/api/proxy?route=explore&tab=Completed&page=1&source=${dataSource}`);
         if (!res.ok) return;
         const data = await res.json();
         if (active) setCompleted((data.animes || []).slice(0, 8));
@@ -182,7 +182,7 @@ export default function Home({ dataSource }: HomeProps) {
         if (active) setLoadingCompleted(false);
       }
     };
-    fetchMovies();
+    fetchCompleted();
     return () => { active = false; };
   }, [dataSource]);
 
@@ -414,16 +414,16 @@ export default function Home({ dataSource }: HomeProps) {
         )}
       </div>
 
-      {/* ANIME MOVIE — ranked */}
+      {/* BARU TAMAT — ranked */}
       <div className="mb-7 px-5">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#a855f7]/15 flex items-center justify-center">
-              <Play className="w-4 h-4 text-[#a855f7]" />
+            <div className="w-7 h-7 rounded-lg bg-[#2196F3]/15 flex items-center justify-center">
+              <Play className="w-4 h-4 text-[#2196F3]" />
             </div>
-            <h2 className="text-base font-bold text-white uppercase tracking-wide">Anime Movie</h2>
+            <h2 className="text-base font-bold text-white uppercase tracking-wide">Baru Tamat</h2>
           </div>
-          <button onClick={() => handleSeeAll("Movies")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
+          <button onClick={() => handleSeeAll("Completed")} className="flex items-center text-xs text-[#535766] hover:text-[#a0a5b5] cursor-pointer">
             See all <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
           </button>
         </div>
