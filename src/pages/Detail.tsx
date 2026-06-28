@@ -3,7 +3,7 @@ import {
   ChevronLeft, Tv, Share2, Clock, PlayCircle, Heart, Star, ChevronDown, 
   BookOpen, Play, Calendar, AlertCircle
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { DetailPayload, DataSource, AnimeRaw } from "../types";
 import AnimeCard from "../components/AnimeCard";
 
@@ -326,6 +326,7 @@ export default function Detail({ slug, dataSource }: DetailProps) {
 
       {/* 5. TAB CONTENT */}
       <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} className="overflow-hidden">
+      <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={activeTab}
         initial={{ x: slideDir * -60, opacity: 0 }}
@@ -479,6 +480,7 @@ export default function Detail({ slug, dataSource }: DetailProps) {
         </div>
       )}
       </motion.div>
+      </AnimatePresence>
       </div>
     </motion.div>
   );
