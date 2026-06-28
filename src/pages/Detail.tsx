@@ -335,15 +335,7 @@ export default function Detail({ slug, dataSource }: DetailProps) {
       >
       {activeTab === "about" && (
         <div className="px-5 pt-5">
-          <h3 className="text-base font-semibold text-white mb-3 font-sans flex items-center gap-2">
-            <BookOpen className="w-4.5 h-4.5 text-[#a0a5b5]" />
-            Synopsis
-          </h3>
-          <p className="text-sm text-[#a0a5b5] leading-relaxed font-sans whitespace-pre-line">
-            {detail.synopsis || "Tidak ada sinopsis yang tersedia."}
-          </p>
-
-          <div className="mt-6 p-4 bg-[#121319] border border-white/5 rounded-2xl flex flex-col gap-3">
+          <div className="p-4 bg-[#121319] border border-white/5 rounded-2xl flex flex-col gap-3 mb-5">
             <div className="flex justify-between items-center text-xs">
               <span className="text-[#535766] font-medium uppercase tracking-wider">Studios</span>
               <span className="text-white font-semibold">{detail.studios || "-"}</span>
@@ -357,6 +349,34 @@ export default function Detail({ slug, dataSource }: DetailProps) {
               <span className="text-white font-semibold">{detail.season || "-"}</span>
             </div>
           </div>
+
+          {/* Trailer — hanya animasu (v1) */}
+          {dataSource === "Dayynime-v1" && detail.trailer && (
+            <div className="mb-5">
+              <h3 className="text-base font-semibold text-white mb-3 font-sans flex items-center gap-2">
+                <Play className="w-4.5 h-4.5 text-[#a0a5b5]" />
+                Trailer
+              </h3>
+              <div className="relative w-full rounded-2xl overflow-hidden bg-[#121319] border border-white/5" style={{paddingBottom: "56.25%"}}>
+                <iframe
+                  src={detail.trailer}
+                  title="Trailer"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                  style={{border: "none"}}
+                />
+              </div>
+            </div>
+          )}
+
+          <h3 className="text-base font-semibold text-white mb-3 font-sans flex items-center gap-2">
+            <BookOpen className="w-4.5 h-4.5 text-[#a0a5b5]" />
+            Synopsis
+          </h3>
+          <p className="text-sm text-[#a0a5b5] leading-relaxed font-sans whitespace-pre-line">
+            {detail.synopsis || "Tidak ada sinopsis yang tersedia."}
+          </p>
         </div>
       )}
 
