@@ -116,9 +116,6 @@ export default function Home({ dataSource }: HomeProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Kalau cache masih valid, skip fetch
-    if (getHomeCache(dataSource)) return;
-
     let active = true;
     const fetchHomeData = async () => {
       setLoading(true);
@@ -173,10 +170,8 @@ export default function Home({ dataSource }: HomeProps) {
     return () => { active = false; };
   }, [dataSource]);
 
-  // Fetch completed separately — juga cek cache
+  // Fetch completed separately
   useEffect(() => {
-    if (getHomeCache(dataSource)) return;
-
     let active = true;
     const fetchCompleted = async () => {
       setLoadingCompleted(true);
