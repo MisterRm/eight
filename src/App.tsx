@@ -48,6 +48,21 @@ export default function App() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
+
+  // Histats — inject sekali saat mount
+  useEffect(() => {
+    (window as any)._Hasync = (window as any)._Hasync || [];
+    (window as any)._Hasync.push(['Histats.start', '1,5036251,4,600,110,30,00011001']);
+    (window as any)._Hasync.push(['Histats.fasi', '1']);
+    (window as any)._Hasync.push(['Histats.track_hits', '']);
+    (window as any)._Hasync.push(['Histats.framed_page', '']);
+    const hs = document.createElement('script');
+    hs.type = 'text/javascript';
+    hs.async = true;
+    hs.src = '//s10.histats.com/js15_as.js';
+    document.head.appendChild(hs);
+  }, []);
+
   useEffect(() => {
     const handleSettingsChange = () => {
       setSettings(getSettings());
