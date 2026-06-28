@@ -3,7 +3,7 @@ import {
   ChevronLeft, Tv, Share2, Clock, PlayCircle, Heart, Star, ChevronDown, 
   BookOpen, Play, Calendar, AlertCircle
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { DetailPayload, DataSource, AnimeRaw } from "../types";
 import AnimeCard from "../components/AnimeCard";
 
@@ -17,6 +17,7 @@ export default function Detail({ slug, dataSource }: DetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"about" | "episodes">("about");
+  const [slideDir, setSlideDir] = useState<number>(0);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const detailTabs = ["about", "episodes"] as const;
@@ -32,8 +33,10 @@ export default function Detail({ slug, dataSource }: DetailProps) {
     if (Math.abs(dx) < 50 || dy > 60) return;
     const currentIdx = detailTabs.indexOf(activeTab);
     if (dx < 0 && currentIdx < detailTabs.length - 1) {
+      setSlideDir(-1);
       setActiveTab(detailTabs[currentIdx + 1]);
     } else if (dx > 0 && currentIdx > 0) {
+      setSlideDir(1);
       setActiveTab(detailTabs[currentIdx - 1]);
     }
   };
@@ -322,7 +325,15 @@ export default function Detail({ slug, dataSource }: DetailProps) {
       </div>
 
       {/* 5. TAB CONTENT */}
-      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} className="overflow-hidden">
+      <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={activeTab}
+        initial={{ x: slideDir * -60, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: slideDir * 60, opacity: 0 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+      >
       {activeTab === "about" && (
         <div className="px-5 pt-5">
           <div className="p-4 bg-[#121319] border border-white/5 rounded-2xl flex flex-col gap-3 mb-5">
@@ -468,6 +479,8 @@ export default function Detail({ slug, dataSource }: DetailProps) {
           </div>
         </div>
       )}
+      </motion.div>
+      </AnimatePresence>
       </div>
     </motion.div>
   );
