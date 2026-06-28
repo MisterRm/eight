@@ -64,8 +64,8 @@ export default function SettingsPage() {
   ];
 
   const SOURCE_OPTIONS: { id: DataSource; label: string; desc: string }[] = [
-    { id: "Dayynime-v1", label: "Animasu (v1)", desc: "Load cepat, streaming responsif, sub Indonesia." },
-    { id: "Dayynime-v2", label: "Samehadaku (v2)", desc: "Database lengkap, rilis tercepat, multi-resolusi." },
+    { id: "Dayynime-v1", label: "Dayynime v1", desc: "Load cepat, streaming responsif, sub Indonesia." },
+    { id: "Dayynime-v2", label: "Dayynime v2", desc: "Database lengkap, rilis tercepat, multi-resolusi." },
   ];
 
   const activeStyle = {

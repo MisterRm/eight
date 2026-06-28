@@ -5,6 +5,7 @@ import { AnimeRaw, FeaturedAnime, DataSource } from "../types";
 import HeroCarousel from "../components/HeroCarousel";
 import AnimeCard from "../components/AnimeCard";
 import ShimmerCard from "../components/ShimmerCard";
+import SidebarDrawer from "../components/SidebarDrawer";
 
 interface HomeProps {
   dataSource: DataSource;
@@ -100,6 +101,7 @@ function RankedShimmer() {
 }
 
 export default function Home({ dataSource }: HomeProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [featured, setFeatured] = useState<FeaturedAnime[]>([]);
   const [recent, setRecent] = useState<AnimeRaw[]>([]);
   const [ongoing, setOngoing] = useState<AnimeRaw[]>([]);
@@ -189,7 +191,7 @@ export default function Home({ dataSource }: HomeProps) {
       {/* TOP BAR */}
       <div className="flex justify-between items-center pt-2 pb-5 px-5">
         <div className="flex items-center gap-3">
-          <button className="text-[#a0a5b5] hover:text-white cursor-pointer">
+          <button onClick={() => setSidebarOpen(true)} className="text-[#a0a5b5] hover:text-white cursor-pointer">
             <Menu className="w-6 h-6 stroke-[2.2]" />
           </button>
           <div className="flex items-center gap-1.5 select-none">
@@ -349,6 +351,11 @@ export default function Home({ dataSource }: HomeProps) {
         </div>
       </div>
 
+      <SidebarDrawer
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        currentHash={window.location.hash}
+      />
     </motion.div>
   );
 }
