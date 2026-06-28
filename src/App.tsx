@@ -89,7 +89,7 @@ export default function App() {
 
   return (
     <div className="w-full min-h-screen bg-[#0e1015] relative">
-      <div className="w-full max-w-[430px] mx-auto min-h-screen relative pb-28">
+      <div className={`w-full max-w-[430px] mx-auto min-h-screen relative ${showBottomNav ? "pb-28" : ""}`}>
         <AnimatePresence mode="wait">
           {renderPage()}
         </AnimatePresence>

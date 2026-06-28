@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Flame, Radio, CheckCircle } from "lucide-react";
+import { Menu, Bell, Search, SlidersHorizontal, ChevronRight, Radio, CheckCircle } from "lucide-react";
 import { motion } from "motion/react";
 import { AnimeRaw, FeaturedAnime, DataSource } from "../types";
 import HeroCarousel from "../components/HeroCarousel";
@@ -193,7 +193,6 @@ export default function Home({ dataSource }: HomeProps) {
             <Menu className="w-6 h-6 stroke-[2.2]" />
           </button>
           <div className="flex items-center gap-1.5 select-none">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#f04438] to-[#ff7a00] font-black text-xs text-white flex items-center justify-center">8</div>
             <span className="font-bold text-xl tracking-tight text-white">Eight</span>
             <span className="ml-1 px-2 py-0.5 rounded-full bg-[#f04438]/15 text-[#f04438] text-[9px] font-bold tracking-wider uppercase">20 New</span>
           </div>
@@ -221,17 +220,29 @@ export default function Home({ dataSource }: HomeProps) {
         </div>
       </div>
 
-      {/* FILTER CHIPS */}
-      <div className="mb-5 overflow-hidden">
-        <div className="flex gap-2 overflow-x-auto px-5 pb-2 scrollbar-none">
-          <button onClick={() => handleChipClick("All")} className="bg-[#121319]/80 border border-white/5 text-[#a0a5b5] hover:text-white rounded-2xl text-xs px-4 py-2 flex items-center gap-1.5 flex-shrink-0 cursor-pointer"><span>All</span></button>
-          <button onClick={() => handleChipClick("Popular")} className="bg-[#121319]/80 border border-white/5 text-[#a0a5b5] hover:text-white rounded-2xl text-xs px-4 py-2 flex items-center gap-1.5 flex-shrink-0 cursor-pointer"><Flame className="w-3.5 h-3.5 text-amber-500" /><span>Popular ♥</span></button>
-          <button onClick={() => handleChipClick("Popular")} className="bg-[#121319]/80 border border-white/5 text-[#a0a5b5] hover:text-white rounded-2xl text-xs px-4 py-2 flex-shrink-0 cursor-pointer"><span>User ratings ★</span></button>
-        </div>
-        <div className="flex gap-2 overflow-x-auto px-5 scrollbar-none">
-          <button onClick={() => handleChipClick("Genres", "action")} className="bg-[#121319]/80 border border-white/5 text-[#a0a5b5] hover:text-white rounded-2xl text-xs px-4 py-2 flex-shrink-0 cursor-pointer"><span>⚡ Action</span></button>
-          <button onClick={() => handleChipClick("Genres", "sci-fi")} className="bg-[#121319]/80 border border-white/5 text-[#a0a5b5] hover:text-white rounded-2xl text-xs px-4 py-2 flex-shrink-0 cursor-pointer"><span>🚀 Futuristic</span></button>
-          <button onClick={() => handleChipClick("Genres", "comedy")} className="bg-[#121319]/80 border border-white/5 text-[#a0a5b5] hover:text-white rounded-2xl text-xs px-4 py-2 flex-shrink-0 cursor-pointer"><span>😊 Comedy</span></button>
+      {/* FILTER CHIPS — single horizontal scroll */}
+      <div className="mb-5">
+        <div className="flex gap-2 overflow-x-auto px-5 pb-1 scrollbar-none">
+          {[
+            { label: "Semua", tab: "All" },
+            { label: "Terpopuler", tab: "Popular" },
+            { label: "Rating Tinggi", tab: "Popular" },
+            { label: "Movies", tab: "Movies" },
+            { label: "Action", tab: "Genres", genre: "action" },
+            { label: "Fantasy", tab: "Genres", genre: "fantasy" },
+            { label: "Comedy", tab: "Genres", genre: "comedy" },
+            { label: "Romance", tab: "Genres", genre: "romance" },
+            { label: "Sci-Fi", tab: "Genres", genre: "sci-fi" },
+            { label: "Horror", tab: "Genres", genre: "horror" },
+          ].map((chip) => (
+            <button
+              key={chip.label}
+              onClick={() => handleChipClick(chip.tab, (chip as any).genre)}
+              className="bg-[#121319]/80 border border-white/5 text-[#a0a5b5] hover:text-white hover:border-white/15 rounded-2xl text-xs px-4 py-2 flex-shrink-0 cursor-pointer transition-colors whitespace-nowrap"
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
       </div>
 
