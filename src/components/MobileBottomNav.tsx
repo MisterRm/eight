@@ -13,25 +13,20 @@ const tabs = [
   { id: "settings", label: "Profile", hash: "#/settings", icon: User },
 ];
 
-/** Distance between the bottom of the viewport and the bottom edge of the pill (matches `bottom-6`) */
-const NAV_BOTTOM_OFFSET_PX = 24;
-
 export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
-  const pillRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
 
-  // Measure the real rendered height of the pill (it changes slightly when a
-  // tab's label appears/disappears) and publish it as a CSS variable so any
-  // page can reserve the *exact* amount of bottom padding — no magic numbers.
+  // Measure the real rendered height of the bar (including the safe-area
+  // padding) and publish it as a CSS variable so pages can reserve the
+  // *exact* amount of bottom padding — no magic numbers.
   useEffect(() => {
-    const el = pillRef.current;
+    const el = barRef.current;
     if (!el) return;
 
     const publishHeight = () => {
-      const height = el.offsetHeight;
-      const clearance = height + NAV_BOTTOM_OFFSET_PX;
       document.documentElement.style.setProperty(
         "--bottom-nav-clearance",
-        `${clearance}px`
+        `${el.offsetHeight}px`
       );
     };
 
@@ -42,7 +37,6 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
     return () => observer.disconnect();
   }, [currentHash]);
 
-  // Helper to check if a tab is active
   const isTabActive = (tabHash: string) => {
     if (tabHash === "#/") {
       return currentHash === "#/" || currentHash === "" || !currentHash;
@@ -55,10 +49,14 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[420px] z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50">
       <div
-        ref={pillRef}
-        className="bg-[#121319]/95 backdrop-blur-md border border-white/5 rounded-3xl py-3 px-4 flex items-center justify-between floating-pill-shadow"
+        ref={barRef}
+        className="bg-[#15171d] border-t border-white/5 rounded-t-[28px] pt-3 px-2 flex items-stretch justify-between"
+        style={{
+          paddingBottom: "max(14px, env(safe-area-inset-bottom))",
+          boxShadow: "0 -8px 30px rgba(0,0,0,0.35)",
+        }}
       >
         {tabs.map((tab) => {
           const active = isTabActive(tab.hash);
@@ -68,24 +66,31 @@ export default function MobileBottomNav({ currentHash }: MobileBottomNavProps) {
             <button
               key={tab.id}
               onClick={() => handleTabClick(tab.hash)}
-              className="relative flex flex-col items-center justify-center flex-1 cursor-pointer transition-all duration-300"
-              id={`nav-tab-${tab.id}`}
+              className="relative flex flex-col items-center justify-start flex-1 gap-1.5 cursor-pointer"
             >
-              <div className="flex flex-col items-center gap-1">
+              <div
+                className="flex items-center justify-center w-11 h-9 rounded-2xl transition-all duration-300"
+                style={
+                  active
+                    ? {
+                        backgroundColor: "#ffffff",
+                        boxShadow: "0 0 16px 2px rgba(255,255,255,0.35)",
+                      }
+                    : undefined
+                }
+              >
                 <IconComponent
-                  className={`w-5 h-5 stroke-[1.8] transition-all duration-300 ${
-                    active ? "text-white scale-110" : "text-[#535766] hover:text-[#a0a5b5]"
-                  }`}
+                  className="w-[19px] h-[19px] transition-colors duration-300"
+                  strokeWidth={active ? 2 : 1.7}
+                  style={{ color: active ? "#0e1015" : "#6b7080" }}
                 />
-                {active && (
-                  <span className="text-[10px] font-medium tracking-wide text-white transition-all duration-300">
-                    {tab.label}
-                  </span>
-                )}
               </div>
-              {active && (
-                <div className="absolute -bottom-2 w-5 h-[2px] bg-white rounded-full transition-all duration-300" />
-              )}
+              <span
+                className="text-[11px] font-medium tracking-wide transition-colors duration-300"
+                style={{ color: active ? "#ffffff" : "#6b7080" }}
+              >
+                {tab.label}
+              </span>
             </button>
           );
         })}
