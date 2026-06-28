@@ -116,12 +116,15 @@ export default function Home({ dataSource }: HomeProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Kalau cache masih valid, skip fetch
+    if (getHomeCache(dataSource)) return;
+
     let active = true;
     const fetchHomeData = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch home & popular secara paralel
+        // Fetch home & popular secara paralel untuk slider
         const [homeRes, popularRes] = await Promise.all([
           fetch(`/api/proxy?route=home&source=${dataSource}`),
           fetch(`/api/proxy?route=explore&tab=Popular&page=1&source=${dataSource}`),
@@ -133,18 +136,24 @@ export default function Home({ dataSource }: HomeProps) {
         const ongoingList: AnimeRaw[] = homeData.ongoing || [];
         const recentList: AnimeRaw[] = homeData.recent || homeData.recents || [];
 
-        // Featured slider dari Popular (minimal 5 item)
+        // Featured slider dari Popular (ambil 7 teratas, poster lebih berkualitas)
         let featuredData: FeaturedAnime[] = [];
         if (popularRes.ok) {
           const popularData = await popularRes.json();
-          featuredData = (popularData.animes || []).slice(0, 7).map((a: AnimeRaw, i: number) => ({
+          const popularList: AnimeRaw[] = popularData.animes || [];
+          featuredData = popularList.slice(0, 7).map((a, i) => ({
             id: i + 1,
             anime_slug: a.slug,
             anime_title: a.title,
             anime_poster: a.poster,
             order_index: i + 1,
+            anime_genres: a.genres || [],
+            anime_score: a.score,
+            anime_type: a.type,
           }));
         }
+
+        // Fallback ke ongoing kalau popular gagal
         if (featuredData.length === 0 && ongoingList.length > 0) {
           featuredData = ongoingList.slice(0, 5).map((a, i) => ({
             id: i + 1,
@@ -152,6 +161,9 @@ export default function Home({ dataSource }: HomeProps) {
             anime_title: a.title,
             anime_poster: a.poster,
             order_index: i + 1,
+            anime_genres: a.genres || [],
+            anime_score: a.score,
+            anime_type: a.type,
           }));
         }
 
@@ -170,8 +182,10 @@ export default function Home({ dataSource }: HomeProps) {
     return () => { active = false; };
   }, [dataSource]);
 
-  // Fetch completed separately
+  // Fetch completed separately — juga cek cache
   useEffect(() => {
+    if (getHomeCache(dataSource)) return;
+
     let active = true;
     const fetchCompleted = async () => {
       setLoadingCompleted(true);
