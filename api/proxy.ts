@@ -205,14 +205,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const r = await fetch(`${ANIME_BASE_URL}samehadaku/anime/${slug}`);
         const d = (await r.json()).data || {};
         return res.json({
-          title: d.title||"Unknown", poster: d.poster||"",
+          title: d.title||d.english||d.japanese||"Unknown", poster: d.poster||"",
           score: d.score?.value||d.score||"N/A",
           synopsis: d.synopsis?.paragraphs?.join("\n")||d.synopsis||"",
           trailer: d.trailer||null, type: d.type||"N/A", status: d.status||"N/A",
           aired: d.aired||"N/A", duration: d.duration||"N/A", studios: d.studios||"N/A", season: d.season||"N/A",
-          genres: (d.genreList||[]).map((g:any)=>({name:g.title,slug:g.genreId})),
-          episodes: (d.episodeList||[]).map((ep:any)=>({name:ep.title,slug:ep.episodeId})),
-          recommended: (d.recommendedAnimeList||[]).slice(0,6).map(normalizeSamehadaku),
+          genres: (d.genreList||[]).map((g:any)=>({name:String(g.title??g.name??""), slug:g.genreId||g.slug||""})),
+          episodes: (d.episodeList||[]).map((ep:any)=>({
+            name: String(ep.title ?? ep.name ?? ep.episode ?? ""),
+            slug: ep.episodeId || ep.slug || ep.id || "",
+          })),
+          recommended: (d.recommendedAnimeList||[]).slice(0,6).map(normalizeSamehadaku).filter(Boolean),
         });
       } else {
         const r = await fetch(`${ANIME_BASE_URL}animasu/detail/${slug}?apikey=${ANIME_API_KEY}`);
@@ -222,8 +225,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           synopsis: a.synopsis||"", trailer: a.trailer||null, type: a.type||"N/A",
           status: a.status||"N/A", aired: a.aired||"N/A", duration: a.duration||"N/A",
           studios: a.studio||"N/A", season: a.season||"N/A",
-          genres: (a.genres||[]).map((g:any)=>({name:g.name,slug:g.slug})),
-          episodes: (a.episodes||[]).map((ep:any)=>({name:ep.name,slug:ep.slug})),
+          genres: (a.genres||[]).map((g:any)=>({name:String(g.name??g.title??""), slug:g.slug||g.genreId||""})),
+          episodes: (a.episodes||[]).map((ep:any)=>({
+            name: String(ep.name ?? ep.title ?? ep.episode ?? ""),
+            slug: ep.slug || ep.episodeId || ep.id || "",
+          })),
           recommended: [],
         });
       }
