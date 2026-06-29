@@ -79,15 +79,6 @@ export type ActiveTab = 'Popular' | 'Movies' | 'Ongoing' | 'Completed' | 'Latest
 
 export interface FilterOption { name: string; value: string; }
 
-export interface SuggestItem {
-  title: string;
-  slug: string;
-  image: string;
-  type: string;
-  status: string;
-  genres: string;
-}
-
 export interface TooltipData {
   id: string;
   title: string;

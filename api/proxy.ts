@@ -566,16 +566,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json(result);
     }
 
-    // ── SUGGEST (V3 autocomplete) ────────────────────────────────────────────
-    if (route === "suggest") {
-      const keyword = encodeURIComponent(params.keyword || "");
-      if (!keyword) return res.json([]);
-      if (!isV3) return res.json([]);
-      const r = await fetch(`${ANIME_BASE_URL_V3}search/suggest?q=${keyword}`);
-      const d = await r.json();
-      return res.json(d.data || []);
-    }
-
     // ── TOOLTIP (V3 quick preview) ────────────────────────────────────────────
     if (route === "tooltip") {
       const tooltipId = params.tooltipId || "";

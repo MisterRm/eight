@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, FormEvent } from "react";
 import { Search as SearchIcon, ArrowLeft, X, ChevronLeft, ChevronRight, HelpCircle } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { AnimeRaw, DataSource, SuggestItem } from "../types";
+import { motion } from "motion/react";
+import { AnimeRaw, DataSource } from "../types";
 import AnimeCard from "../components/AnimeCard";
 import ShimmerCard from "../components/ShimmerCard";
 
@@ -16,43 +16,16 @@ export default function Search({ dataSource }: SearchProps) {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
-  // Suggest (V3 only)
-  const [suggests, setSuggests] = useState<SuggestItem[]>([]);
-  const [showSuggest, setShowSuggest] = useState(false);
-  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isV3 = dataSource === "Dayynime-v3";
 
   useEffect(() => {
     if (inputRef.current) inputRef.current.focus();
   }, []);
 
-  // Suggest debounce (V3 only)
-  useEffect(() => {
-    if (!isV3 || !keyword.trim() || keyword.length < 2) {
-      setSuggests([]);
-      setShowSuggest(false);
-      return;
-    }
-    if (suggestTimer.current) clearTimeout(suggestTimer.current);
-    suggestTimer.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/proxy?route=suggest&keyword=${encodeURIComponent(keyword)}&source=${dataSource}`);
-        if (res.ok) {
-          const data = await res.json();
-          setSuggests(data.slice(0, 6));
-          setShowSuggest(data.length > 0);
-        }
-      } catch {}
-    }, 350);
-    return () => { if (suggestTimer.current) clearTimeout(suggestTimer.current); };
-  }, [keyword, dataSource]);
-
   const performSearch = async (currentKeyword: string, currentPage: number) => {
     if (!currentKeyword.trim()) { setResults([]); setHasNextPage(false); return; }
     setLoading(true);
     setError(null);
-    setShowSuggest(false);
     try {
       const res = await fetch(`/api/proxy?route=search&keyword=${encodeURIComponent(currentKeyword)}&page=${currentPage}&source=${dataSource}`);
       if (!res.ok) throw new Error("Gagal melakukan pencarian");
@@ -88,12 +61,10 @@ export default function Search({ dataSource }: SearchProps) {
     setResults([]);
     setHasNextPage(false);
     setSuggests([]);
-    setShowSuggest(false);
     if (inputRef.current) inputRef.current.focus();
   };
 
   const handleSuggestClick = (item: SuggestItem) => {
-    setShowSuggest(false);
     window.location.hash = `#/detail/${item.slug}`;
   };
 
@@ -115,15 +86,12 @@ export default function Search({ dataSource }: SearchProps) {
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        <div className="flex-1 relative">
-          <form onSubmit={handleSearchSubmit} className="relative">
+        <form onSubmit={handleSearchSubmit} className="flex-1 relative">
             <input
               ref={inputRef}
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              onFocus={() => suggests.length > 0 && setShowSuggest(true)}
-              onBlur={() => setTimeout(() => setShowSuggest(false), 150)}
               placeholder="Cari anime favoritmu..."
               className="w-full bg-[#121319] border border-white/5 rounded-2xl py-3.5 pl-11 pr-11 text-white placeholder-[#535766] text-sm focus:outline-none focus:border-white/10"
             />
@@ -137,40 +105,7 @@ export default function Search({ dataSource }: SearchProps) {
                 <X className="w-4 h-4" />
               </button>
             )}
-          </form>
-
-          {/* Autocomplete Suggest Dropdown (V3 only) */}
-          <AnimatePresence>
-            {isV3 && showSuggest && suggests.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15 }}
-                className="absolute top-full left-0 right-0 mt-2 bg-[#121319] border border-white/10 rounded-2xl overflow-hidden z-50 shadow-xl"
-              >
-                {suggests.map((item) => (
-                  <button
-                    key={item.slug}
-                    onMouseDown={() => handleSuggestClick(item)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#1a1c24] transition-colors text-left border-b border-white/5 last:border-0 cursor-pointer"
-                  >
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-9 h-12 object-cover rounded-lg flex-shrink-0 bg-[#1a1c24]"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-xs font-semibold truncate">{item.title}</p>
-                      <p className="text-[#535766] text-[10px] mt-0.5">{item.type} · {item.status}</p>
-                    </div>
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        </form>
       </div>
 
       {/* Results Content */}
