@@ -7,9 +7,13 @@ import Detail from "./pages/Detail";
 import Watch from "./pages/Watch";
 import Schedule from "./pages/Schedule";
 import SettingsPage from "./pages/Settings";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ProfileUser from "./pages/ProfileUser";
 import MobileBottomNav from "./components/MobileBottomNav";
 import { getSettings, AppSettings } from "./lib/settings";
 import { AnimeRaw, FeaturedAnime } from "./types";
+import { useAuth } from "./hooks/useAuth";
 
 // ─── Global Home Cache ────────────────────────────────────────────────────────
 // Disimpan di luar component supaya tidak hilang saat Home di-unmount.
@@ -39,6 +43,7 @@ export function setHomeCache(data: Omit<HomeCache, "fetchedAt"> & { dataSource: 
 export default function App() {
   const [currentHash, setCurrentHash] = useState(window.location.hash || "#/");
   const [settings, setSettings] = useState<AppSettings>(getSettings());
+  const { user, profile, loading: authLoading, signOut, refreshProfile } = useAuth();
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -109,6 +114,17 @@ export default function App() {
     if (hash.startsWith("#/settings")) {
       return <SettingsPage />;
     }
+    if (hash.startsWith("#/login")) {
+      return <Login onSuccess={() => { window.location.hash = "#/profile"; }} onNavigateRegister={() => { window.location.hash = "#/register"; }} />;
+    }
+    if (hash.startsWith("#/register")) {
+      return <Register onSuccess={() => { window.location.hash = "#/login"; }} onNavigateLogin={() => { window.location.hash = "#/login"; }} />;
+    }
+    if (hash.startsWith("#/profile")) {
+      if (authLoading) return <div className="min-h-screen bg-[#0e1015] flex items-center justify-center"><div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>;
+      if (!user || !profile) return <Login onSuccess={() => { window.location.hash = "#/profile"; }} onNavigateRegister={() => { window.location.hash = "#/register"; }} />;
+      return <ProfileUser user={user} profile={profile} onSignOut={async () => { await signOut(); window.location.hash = "#/"; }} onProfileUpdate={refreshProfile} />;
+    }
     if (hash.startsWith("#/detail/")) {
       const slug = hash.substring("#/detail/".length).split("?")[0];
       return <Detail slug={slug} dataSource={settings.dataSource} />;
@@ -126,7 +142,8 @@ export default function App() {
     currentHash.startsWith("#/search") ||
     currentHash.startsWith("#/explore") ||
     currentHash.startsWith("#/schedule") ||
-    currentHash.startsWith("#/settings");
+    currentHash.startsWith("#/settings") ||
+    currentHash.startsWith("#/profile");
 
   return (
     <div className="w-full min-h-screen bg-[#0e1015] relative">
@@ -141,7 +158,7 @@ export default function App() {
         <AnimatePresence mode="wait">
           {renderPage()}
         </AnimatePresence>
-        {showBottomNav && <MobileBottomNav currentHash={currentHash} />}
+        {showBottomNav && <MobileBottomNav currentHash={currentHash} user={user} profile={profile} />}
       </div>
     </div>
   );
