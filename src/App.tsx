@@ -122,7 +122,8 @@ export default function App() {
     }
     if (hash.startsWith("#/profile")) {
       if (authLoading) return <div className="min-h-screen bg-[#0e1015] flex items-center justify-center"><div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>;
-      if (!user || !profile) return <Login onSuccess={() => { window.location.hash = "#/profile"; }} onNavigateRegister={() => { window.location.hash = "#/register"; }} />;
+      if (!user) return <Login onSuccess={() => { window.location.hash = "#/profile"; }} onNavigateRegister={() => { window.location.hash = "#/register"; }} />;
+      if (!profile) return <div className="min-h-screen bg-[#0e1015] flex items-center justify-center"><div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>;
       return <ProfileUser user={user} profile={profile} onSignOut={async () => { await signOut(); window.location.hash = "#/"; }} onProfileUpdate={refreshProfile} />;
     }
     if (hash.startsWith("#/detail/")) {
