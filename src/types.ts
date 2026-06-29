@@ -26,6 +26,7 @@ export interface AnimeRaw {
   release: string | null;
   genres: string[] | null;
   estimation: string | null;
+  tooltip_id?: string;
 }
 
 export interface GenreItem { name: string; slug: string; }
@@ -74,4 +75,28 @@ export type AccentColor = 'white' | 'blue' | 'purple' | 'green' | 'orange';
 export type DataSource = 'Dayynime-v1' | 'Dayynime-v2' | 'Dayynime-v3';
 export type GridLayout = 'cols-2' | 'cols-3' | 'list';
 export type TextSize = 'kecil' | 'sedang' | 'besar';
-export type ActiveTab = 'Popular' | 'Movies' | 'Ongoing' | 'Completed' | 'Latest' | 'Genres' | 'All';
+export type ActiveTab = 'Popular' | 'Movies' | 'Ongoing' | 'Completed' | 'Latest' | 'Genres' | 'All' | 'Donghua' | 'LiveAction' | 'Tokusatsu';
+
+export interface FilterOption { name: string; value: string; }
+
+export interface SuggestItem {
+  title: string;
+  slug: string;
+  image: string;
+  type: string;
+  status: string;
+  genres: string;
+}
+
+export interface TooltipData {
+  id: string;
+  title: string;
+  rating: string;
+  duration: string;
+  quality: string;
+  synopsis: string;
+  status: string;
+  studio: string;
+  genres: string[];
+  detail_id: string;
+}

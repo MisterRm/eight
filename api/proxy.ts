@@ -154,8 +154,6 @@ function animeSlugFromEpSlug(epSlug: string): string {
 
 function normalizeAnimekompi(item: any) {
   if (!item) return null;
-  // item.slug di /home dan /search adalah EPISODE slug, bukan anime slug
-  // Kita derive anime slug dari sana
   const rawSlug = (item.slug || "").trim();
   const animeSlug = item.detail_slug || animeSlugFromEpSlug(rawSlug);
   return {
@@ -169,6 +167,7 @@ function normalizeAnimekompi(item: any) {
     release: item.date || null,
     genres: [],
     estimation: item.time || null,
+    tooltip_id: item.tooltip_id || null,
   };
 }
 
@@ -287,6 +286,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           Genres: `genre/${genreSlug}`,
           All: `terbaru`,
           Ongoing: `status/ongoing`,
+          Donghua: `donghua`,
+          LiveAction: `live-action`,
+          Tokusatsu: `tokusatsu`,
         };
         const ep = epMap[tab] || "terbaru";
         const data = await fetchWithCache(cacheKey, async () => {
@@ -564,7 +566,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json(result);
     }
 
-    return res.status(404).json({ error: "Route tidak ditemukan" });
+    // ── SUGGEST (V3 autocomplete) ────────────────────────────────────────────
+    if (route === "suggest") {
+      const keyword = encodeURIComponent(params.keyword || "");
+      if (!keyword) return res.json([]);
+      if (!isV3) return res.json([]);
+      const r = await fetch(`${ANIME_BASE_URL_V3}search/suggest?q=${keyword}`);
+      const d = await r.json();
+      return res.json(d.data || []);
+    }
+
+    // ── TOOLTIP (V3 quick preview) ────────────────────────────────────────────
+    if (route === "tooltip") {
+      const tooltipId = params.tooltipId || "";
+      if (!tooltipId || !isV3) return res.json(null);
+      const data = await fetchWithCache(`tooltip:${tooltipId}`, async () => {
+        const r = await fetch(`${ANIME_BASE_URL_V3}tooltip/${tooltipId}`);
+        const d = await r.json();
+        return d.data || null;
+      }, TTL.detail);
+      return res.json(data);
+    }
+
+    // ── FILTER (V3 advanced filter) ───────────────────────────────────────────
+    if (route === "filter") {
+      if (!isV3) return res.json({ animes: [], pagination: { hasNext: false, hasPrev: false, currentPage: 1 } });
+      const page = params.page || "1";
+      const genre = params.genre || "";
+      const studio = params.studio || "";
+      const season = params.season || "";
+      const type = params.type || "";
+      const status = params.status || "";
+      const order = params.order || "update";
+      const cacheKey = `filter:v3:${genre}:${studio}:${season}:${type}:${status}:${order}:${page}`;
+      const blacklist = await getBlacklistedSlugs();
+      const data = await fetchWithCache(cacheKey, async () => {
+        let url = `${ANIME_BASE_URL_V3}filter?page=${page}&order=${order}`;
+        if (genre) url += `&genre[]=${genre}`;
+        if (studio) url += `&studio[]=${studio}`;
+        if (season) url += `&season[]=${season}`;
+        if (type) url += `&type[]=${type}`;
+        if (status) url += `&status[]=${status}`;
+        const r = await fetch(url);
+        const d = await r.json();
+        const pg = d.pagination || {};
+        return {
+          animes: (d.data || []).map(normalizeAnimekompi).filter(Boolean),
+          pagination: { hasNext: !!pg.has_next, hasPrev: !!pg.prev_page, currentPage: Number(pg.current_page || page) },
+        };
+      }, TTL.explore);
+      return res.json({ animes: filterBlacklist(data.animes, blacklist), pagination: data.pagination });
+    }
+
+    // ── FILTER OPTIONS (seasons, studios, types, orders) ─────────────────────
+    if (route === "filter_options") {
+      if (!isV3) return res.json({});
+      const data = await fetchWithCache("filter_options:v3", async () => {
+        const [seasons, studios, types, orders, statuses] = await Promise.all([
+          upstream(`${ANIME_BASE_URL_V3}seasons`).then(d => (d.data || []).map((i: any) => ({ name: i.name, value: i.value }))),
+          upstream(`${ANIME_BASE_URL_V3}studios`).then(d => (d.data || []).map((i: any) => ({ name: i.name, value: i.value }))),
+          upstream(`${ANIME_BASE_URL_V3}types`).then(d => (d.data || []).map((i: any) => ({ name: i.name, value: i.value }))),
+          upstream(`${ANIME_BASE_URL_V3}orders`).then(d => (d.data || []).map((i: any) => ({ name: i.name, value: i.value }))),
+          upstream(`${ANIME_BASE_URL_V3}status`).then(d => (d.data || []).map((i: any) => ({ name: i.name, value: i.value }))),
+        ]);
+        return { seasons, studios, types, orders, statuses };
+      }, 60 * 60); // cache 1 jam
+      return res.json(data);
+    }
+
+        return res.status(404).json({ error: "Route tidak ditemukan" });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || "Internal server error" });
   }
